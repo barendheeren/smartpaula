@@ -234,6 +234,7 @@ function handleResponse(response, sender) {
                                 message.text += '\n' + HOSTNAME + 'connect/wunderlist/' + sender;
                                 break;
                             case 'Vitadock':
+                                console.log(vitadock);
                                 vitadock.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
                                     if (!error) {
                                         facebook.sendMessage(sender, { text: url });
