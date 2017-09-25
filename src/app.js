@@ -785,6 +785,27 @@ app.all('/webhook/wunderlist/:fbuser', (req, res) => {
     }
 });
 
+app.post('webhook/salesforce', (req, res) => {
+    let body = JSON.parse(req.body);
+
+    let user = body.user;
+    let event = body.event;
+
+    if (!sessionIds.has(user)) {
+        sessionIds.set(user, uuid.v1());
+    }
+
+    let request = apiAiService.eventRequest({
+        name: event,
+    }, {
+        sessionId: sessionIds.get(user)
+    });
+    request.on('response', (response) => { handleResponse(response, user); });
+    request.on('error', (error) => console.error(error));
+
+    request.end();
+})
+
 app.listen(REST_PORT, () => {
     console.log('Rest service ready on port ' + REST_PORT);
 });
