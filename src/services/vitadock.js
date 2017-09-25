@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const request = require('request');
 const passport = require('passport');
+const OAuth1Strategy = require('passport-oauth1').Strategy;
 
 const HOSTNAME = process.env.HOSTNAME;
 
