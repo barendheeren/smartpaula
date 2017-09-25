@@ -10,8 +10,8 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
     this._callbackUrl = callbackUrl;
 
     this._oAuth = new OAuth.OAuth(
-        'https://cloud.vitadock.com/auth/unauthorizedaccesses',
-        'https://cloud.vitadock.com/auth/accesses/verify',
+        'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
+        'https://test-cloud.vitadock.com/auth/accesses/verify',
         this._applicationToken,
         this._applicationSecret,
         '1.0',
@@ -24,7 +24,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
 Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
     callback = callback || function() {};
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
-        let authUrl = 'http://localhost/desiredaccessrights/request?' +
+        let authUrl = 'https://test-cloud.vitadock.com/desiredaccessrights/request?' +
             'oauth_consumer_key=' + this._applicationToken +
             '&oauth_token=' + oAuthToken;
         if (error) {
