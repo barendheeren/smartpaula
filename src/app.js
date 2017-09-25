@@ -789,8 +789,9 @@ app.all('/webhook/wunderlist/:fbuser', (req, res) => {
 });
 
 app.post('/webhook/salesforce', (req, res) => {
-    //let body = JSON.parse(req.body);
-    console.log(req.body);
+    console.log(req);
+
+    let body = JSON.parse(req.body);
     let user = req.body.UID;
     let event = req.body.response;
 
