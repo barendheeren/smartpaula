@@ -15,6 +15,7 @@ const cookieParser = require('cookie-parser');
 const Wunderlist = require('./services/wunderlist');
 const Facebook = require('./services/facebook');
 const Nokia = require('./services/nokia');
+const Vitadock = require('./services/vitadock');
 
 const REST_PORT = (process.env.PORT || 5000);
 const APIAI_ACCESS_TOKEN = process.env.APIAI_ACCESS_TOKEN;
@@ -25,6 +26,8 @@ const NOKIA_API_KEY = process.env.NOKIA_API_KEY;
 const NOKIA_API_SECRET = process.env.NOKIA_API_SECRET;
 const WUNDERLIST_CLIENT_ID = process.env.WUNDERLIST_CLIENT_ID;
 const WUNDERLIST_CLIENT_SECRET = process.env.WUNDERLIST_CLIENT_SECRET;
+const VITADOCK_API_TOKEN = 'K5dojLgjbuudcrUbl68VDElVTCg2zh6wnbjkAeG7XmNYdCJJKoScdhqr3uulzeRq';
+const VITADOCK_API_SECRET = 'TUEo6BU3xL0VmhdRfDssmaV6n3L94jFbrgGRYVf99LRovG0C6rBGhgqiwurs3a2N';
 const HOSTNAME = process.env.HOSTNAME;
 const DEFAULT_INTENT_REFER_TO = process.env.DEFAULT_INTENT_REFER_TO;
 const DEFAULT_INTENTS = ['57b82498-053c-4776-8be9-228c420e6c13', 'b429ecdc-21f4-4a07-8165-3620023185ba'];
@@ -47,6 +50,9 @@ const wunderlist = new Wunderlist(WUNDERLIST_CLIENT_ID, WUNDERLIST_CLIENT_SECRET
 
 /** @const {Facebook} Facebook API interface */
 const facebook = new Facebook(FB_VERIFY_TOKEN, FB_PAGE_ACCESS_TOKEN);
+
+/** @const {Vitadock} Vitadock API interface */
+const vitadock = new Vitadock(VITADOCK_API_TOKEN, VITADOCK_API_SECRET);
 
 /** @const {Map} Map of existing API.AI session ID's */
 const sessionIds = new Map();
