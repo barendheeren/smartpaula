@@ -77,6 +77,13 @@ function handleResponse(response, sender) {
         /** Additional parameters passed by the intent @type {object} */
         let parameters = response.result.parameters;
 
+        pool.query("SELECT COUNT(*) as count FROM clients WHERE handle = $1", [sender]).then(res => {
+            let count = res.rows[0].count;
+            if (count === 0) {
+                pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, 'FB')", [uuid.v4(), sender]);
+            }
+        })
+
         if (isDefined(responseData) && isDefined(responseData.facebook)) {
             // If the response is specifically a facebook message, send it directly to the user.
             // (Is this ever used?)

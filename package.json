@@ -20,6 +20,7 @@
     "express": "^4.15.5",
     "express-session": "^1.15.5",
     "html-entities": "^1.2.0",
+    "jsforce": "^1.8.0",
     "json-bigint": "^0.2.0",
     "moment": "^2.18.1",
     "node-uuid": "^1.4.7",
