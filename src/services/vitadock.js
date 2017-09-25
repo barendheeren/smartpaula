@@ -16,7 +16,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
         this._applicationSecret,
         '1.0',
         this._callbackUrl,
-        'HMAC-SHA1'
+        'PLAINTEXT'
     );
     console.log(this._oAuth);
 };
