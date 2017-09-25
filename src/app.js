@@ -791,7 +791,9 @@ app.all('/webhook/wunderlist/:fbuser', (req, res) => {
 app.post('/webhook/salesforce', (req, res) => {
     let body = JSON.parse(req.body);
     let user = body.UID;
-    let event = body.response;
+    let event = body.Response;
+
+    consle.log(user, event);
 
     if (!sessionIds.has(user)) {
         sessionIds.set(user, uuid.v1());
