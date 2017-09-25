@@ -21,7 +21,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
     console.log(this._oAuth);
 };
 
-Vitadock.prototype.getRequestUrl = (fbUser, callback) => {
+Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
     callback = callback || function() {};
     console.log(this);
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
