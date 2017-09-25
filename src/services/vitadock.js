@@ -3,7 +3,6 @@
 const OAuth = require('oauth-1.0a');
 const crypto = require('crypto');
 const request = require('request');
-const qs = require('querystring');
 
 const HOSTNAME = process.env.HOSTNAME;
 
@@ -27,12 +26,21 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
 Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
     callback = callback || function() {};
 
-    request.post({
+    var request_data = {
         url: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
-        oauth: { consumer_key: this._applicationToken, consumer_secret: this._applicationSecret, signature_method: 'HMAC-SHA256' }
+        method: 'POST',
+        data: {}
+    };
+
+    request({
+        url: request_data.url,
+        type: request_data.method,
+        headers: this._oAuth.toHeader(this._oAuth.authorize(request_data, {
+            key: this._applicationToken,
+            secret: this._applicationSecret
+        }))
     }, function(error, response, body) {
-        var req_data = qs.parse(body)
-        console.log(error, req_data, body);
+        console.log(error, body);
     });
     /**
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
