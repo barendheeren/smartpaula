@@ -32,7 +32,7 @@ Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
         data: {}
     };
 
-    requestpost({
+    request.post({
         url: request_data.url,
         form: request_data.data,
         headers: [
