@@ -166,7 +166,7 @@ function handleResponse(response, sender) {
                                 let vragenlijst = res.rows[0].id;
                                 pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
                                     .then(res => {
-                                        let answer_no = res.rowCount + 1;;
+                                        let answer_no = res.rowCount + 1;
                                         pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, score, answer_no]);
                                     });
                             });
@@ -179,6 +179,9 @@ function handleResponse(response, sender) {
                             delete message.quick_replies;
                         }
                     });
+                    break;
+
+                case "sf12-sum":
                     break;
 
                     // User wants to start a new questionnare
@@ -786,7 +789,7 @@ app.all('/webhook/wunderlist/:fbuser', (req, res) => {
 });
 
 app.post('/webhook/salesforce', (req, res) => {
-    let body = JSON.parse(req.body);
+    //let body = JSON.parse(req.body);
 
     let user = body.UID;
     let event = body.response;
