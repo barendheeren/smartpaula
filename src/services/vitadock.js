@@ -37,7 +37,7 @@ Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
     request({
         url: request_data.url,
         type: request_data.method,
-        headers: OAuth.toHeader(OAuth.authorize(request_data, {
+        headers: this._oauth.toHeader(this._oauth.authorize(request_data, {
             key: this._applicationToken,
             secret: this._applicationSecret
         }))
