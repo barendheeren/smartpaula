@@ -42,7 +42,7 @@ Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
             secret: this._applicationSecret
         }))
     }, function(error, response, body) {
-        console.log(error, response, body);
+        console.log(error, body);
     });
     /**
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
