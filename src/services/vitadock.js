@@ -11,7 +11,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
     this._applicationSecret = applicationSecret;
     this._callbackUrl = callbackUrl;
 
-    this._oAuth = new OAuth.OAuth({
+    this._oAuth = new OAuth({
         consumer: {
             key: this._applicationToken,
             secret: this._applicationSecret
