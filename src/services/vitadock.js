@@ -23,10 +23,9 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
 
 Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
     callback = callback || function() {};
-    console.log(this);
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
         let authUrl = 'http://localhost/desiredaccessrights/request?' +
-            'oauth_consumer_key=' + this._apiKey +
+            'oauth_consumer_key=' + this._applicationToken +
             '&oauth_token=' + oAuthToken;
         if (error) {
             callback(error);
