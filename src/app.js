@@ -236,7 +236,9 @@ function handleResponse(response, sender) {
                             case 'Vitadock':
                                 console.log(vitadock);
                                 vitadock.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
-                                    if (!error) {
+                                    if (error) {
+                                        console.log(error);
+                                    } else {
                                         facebook.sendMessage(sender, { text: url });
                                         pool.query('DELETE FROM connect_vitadock WHERE fbuser = $1', [sender]).then(() => {
                                             pool.query('INSERT INTO connect_vitadock (fbuser, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
