@@ -24,7 +24,7 @@ Vitadock.prototype.getRequestUrl = (fbUser, callback) => {
     callback = callback || function() {};
 
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
-        let authUrl = 'https://developer.health.nokia.com/account/authorize?' +
+        let authUrl = 'http://localhost/desiredaccessrights/request?' +
             'oauth_consumer_key=' + this._apiKey +
             '&oauth_token=' + oAuthToken;
         if (error) {
