@@ -32,13 +32,15 @@ Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
         data: {}
     };
 
-    request({
+    requestpost({
         url: request_data.url,
-        type: request_data.method,
-        headers: this._oAuth.toHeader(this._oAuth.authorize(request_data, {
-            key: this._applicationToken,
-            secret: this._applicationSecret
-        }))
+        form: request_data.data,
+        headers: [
+            this._oAuth.toHeader(this._oAuth.authorize(request_data, {
+                key: this._applicationToken,
+                secret: this._applicationSecret
+            })),
+        ]
     }, function(error, response, body) {
         console.log(error, body);
     });
