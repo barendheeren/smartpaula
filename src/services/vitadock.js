@@ -26,23 +26,12 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
 Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
     callback = callback || function() {};
 
-    var request_data = {
+    request.post({
         url: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
-        method: 'POST',
-        data: {
-            oauth_callback: HOSTNAME + 'bah'
-        }
-    };
-
-    request({
-        url: request_data.url,
-        type: request_data.method,
-        headers: this._oAuth.toHeader(this._oAuth.authorize(request_data, {
-            key: this._applicationToken,
-            secret: this._applicationSecret
-        }))
+        oauth: { consumer_key: this._applicationToken, consumer_secret: this._applicationSecret }
     }, function(error, response, body) {
-        console.log(error, body);
+        req_data = qs.parse(body)
+        console.log(error, req_data, body);
     });
     /**
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
