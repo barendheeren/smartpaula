@@ -16,7 +16,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
             key: this._applicationToken,
             secret: this._applicationSecret
         },
-        signature_method: 'HMAC_SHA256',
+        signature_method: 'HMAC-SHA256',
         hash_function: function(base_string, key) {
             return crypto.createHmac('sha256', key).update(base_string).digest('base64');
         }
