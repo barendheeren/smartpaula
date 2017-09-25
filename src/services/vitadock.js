@@ -32,14 +32,17 @@ Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
         data: {}
     };
 
+    var oauth_header = this._oAuth.toHeader(this._oAuth.authorize(request_data, {
+        key: this._applicationToken,
+        secret: this._applicationSecret
+    }));
+
+    console.log(oauth_header);
+
     request.post({
-        url: request_data.url,
-        form: request_data.data,
+        url: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
         headers: [
-            this._oAuth.toHeader(this._oAuth.authorize(request_data, {
-                key: this._applicationToken,
-                secret: this._applicationSecret
-            })),
+            oauth_header,
         ]
     }, function(error, response, body) {
         console.log(error, body);
