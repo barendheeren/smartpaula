@@ -804,22 +804,27 @@ app.post('/webhook/salesforce', (req, res) => {
     let user = body.UID;
     let event = body.Response;
 
-    console.log(user, event);
+    pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 LIMIT 1", [user]).then(res => {
+        let id = res.rows[0].id;
+        let handle = res.rows[0].handle;
+        let type = res.rows[0].type;
 
-    if (!sessionIds.has(user)) {
-        sessionIds.set(user, uuid.v1());
-    }
+        if (!sessionIds.has(handle)) {
+            sessionIds.set(handle, uuid.v1());
+        }
 
-    let request = apiAiService.eventRequest({
-        name: event,
-    }, {
-        sessionId: sessionIds.get(user)
+        let request = apiAiService.eventRequest({
+            name: event,
+        }, {
+            sessionId: sessionIds.get(handle)
+        });
+
+        request.on('response', (response) => { handleResponse(response, handle); });
+        request.on('error', (error) => console.error(error));
+
+        request.end();
     });
-    request.on('response', (response) => { handleResponse(response, user); });
-    request.on('error', (error) => console.error(error));
-
-    request.end();
-})
+});
 
 app.listen(REST_PORT, () => {
     console.log('Rest service ready on port ' + REST_PORT);
