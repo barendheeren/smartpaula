@@ -21,7 +21,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
 };
 
 Vitadock.prototype.getRequestUrl = (fbUser, callback) => {
-    callback = callback || () => {};
+    callback = callback || function() {};
 
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
         let authUrl = 'https://developer.health.nokia.com/account/authorize?' +
@@ -32,7 +32,7 @@ Vitadock.prototype.getRequestUrl = (fbUser, callback) => {
             return;
         }
         callback(null, authUrl, oAuthToken, oAuthTokenSecret);
-    })
-}
+    });
+};
 
 module.exports = Vitadock;

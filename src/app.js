@@ -225,14 +225,24 @@ function handleResponse(response, sender) {
                                         facebook.sendMessage(sender, { text: url });
                                         pool.query('DELETE FROM connect_nokia WHERE fbuser = $1', [sender]).then(() => {
                                             pool.query('INSERT INTO connect_nokia (fbuser, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
-                                                .catch(e => console.error(e, e.stack));;
-                                        }).catch(e => console.error(e, e.stack));;
+                                                .catch(e => console.error(e, e.stack));
+                                        }).catch(e => console.error(e, e.stack));
                                     }
                                 });
                                 break;
                             case "Wunderlist":
                                 message.text += '\n' + HOSTNAME + 'connect/wunderlist/' + sender;
                                 break;
+                            case 'Vitadock':
+                                vitadock.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
+                                    if (!error) {
+                                        facebook.sendMessage(sender, { text: url });
+                                        pool.query('DELETE FROM connect_vitadock WHERE fbuser = $1', [sender]).then(() => {
+                                            pool.query('INSERT INTO connect_vitadock (fbuser, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
+                                                .catch(e => console.error(e, e.stack));
+                                        }).catch(e => console.error(e, e.stack));
+                                    }
+                                });
                         }
                     }
                     break;
