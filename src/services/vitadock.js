@@ -30,7 +30,7 @@ Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
         url: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
         oauth: { consumer_key: this._applicationToken, consumer_secret: this._applicationSecret }
     }, function(error, response, body) {
-        req_data = qs.parse(body)
+        var req_data = qs.parse(body)
         console.log(error, req_data, body);
     });
     /**
