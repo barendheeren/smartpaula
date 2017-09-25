@@ -18,11 +18,12 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
         this._callbackUrl,
         'HMAC-SHA1'
     );
+    console.log(this._0Auth);
 };
 
 Vitadock.prototype.getRequestUrl = (fbUser, callback) => {
     callback = callback || function() {};
-
+    console.log(this);
     this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
         let authUrl = 'http://localhost/desiredaccessrights/request?' +
             'oauth_consumer_key=' + this._apiKey +
