@@ -524,7 +524,7 @@ function isDefined(obj) {
 }
 
 function createNewClient(handle, type) {
-    pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), sender, type]);
+    pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type]);
 }
 
 const app = express();
