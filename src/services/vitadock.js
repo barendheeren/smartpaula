@@ -18,7 +18,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
         this._callbackUrl,
         'HMAC-SHA1'
     );
-    console.log(this._0Auth);
+    console.log(this._oAuth);
 };
 
 Vitadock.prototype.getRequestUrl = (fbUser, callback) => {
