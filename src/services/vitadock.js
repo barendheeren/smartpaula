@@ -13,7 +13,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
     this._callbackUrl = callbackUrl;
 
     passport.use(new OAuth1Strategy({
-            requestTokenUrl: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
+            requestTokenURL: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
             accessTokenURL: 'https://www.example.com/oauth/access_token',
             userAuthorizationURL: 'https://www.example.com/oauth/authorize',
             consumerKey: this._applicationKey,
