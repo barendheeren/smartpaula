@@ -16,7 +16,7 @@ let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
             requestTokenURL: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
             accessTokenURL: 'https://www.example.com/oauth/access_token',
             userAuthorizationURL: 'https://www.example.com/oauth/authorize',
-            consumerKey: this._applicationKey,
+            consumerKey: this._applicationToken,
             consumerSecret: this._applicationSecret,
             callbackUrl: HOSTNAME + 'callback/vitadock',
             signatureMethod: "HMAC-SHA256"
