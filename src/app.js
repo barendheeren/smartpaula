@@ -79,9 +79,8 @@ function handleResponse(response, sender) {
 
         pool.query("SELECT COUNT(*) as count FROM clients WHERE handle = $1", [sender]).then(res => {
             let count = res.rows[0].count;
-            console.log(count, count === '0');
             if (count === '0') {
-                pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, 'FB')", [uuid.v4(), sender]);
+                createNewClient(sender, 'FB');
             }
         });
 
@@ -522,6 +521,10 @@ function isDefined(obj) {
     }
 
     return obj != null;
+}
+
+function createNewClient(handle, type) {
+    pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), sender, type]);
 }
 
 const app = express();
