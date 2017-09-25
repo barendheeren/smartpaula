@@ -3,6 +3,7 @@
 const OAuth = require('oauth-1.0a');
 const crypto = require('crypto');
 const request = require('request');
+const qs = require('querystring');
 
 const HOSTNAME = process.env.HOSTNAME;
 
