@@ -1,6 +1,5 @@
 'use strict'
 
-const OAuth = require('oauth-1.0a');
 const crypto = require('crypto');
 const request = require('request');
 const passport = require('passport');
