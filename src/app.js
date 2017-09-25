@@ -793,7 +793,7 @@ app.post('/webhook/salesforce', (req, res) => {
     let user = body.UID;
     let event = body.Response;
 
-    consle.log(user, event);
+    console.log(user, event);
 
     if (!sessionIds.has(user)) {
         sessionIds.set(user, uuid.v1());
