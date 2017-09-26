@@ -156,10 +156,11 @@ function handleResponse(response, sender) {
                 // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
                 if (DEFAULT_INTENTS.includes(intent)) {
                     pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
+                        let handle = result.rows[0].handle;
                         salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
                             salesforce.sobject('Case')
                                 .create({
-                                        AccountId: sender,
+                                        AccountId: handle,
                                         Status: 'New',
                                         Origin: 'Smart Susan',
                                         Subject: resolvedQuery,
@@ -473,7 +474,6 @@ function getNokiaMeasurements(userid) {
                             if (type === 1) {
                                 pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
                                 salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
-                                    console.log(salesforce);
                                     salesforce.sobject('Weight_Measurements__c')
                                         .create({
                                                 Account__c: client.handle,
