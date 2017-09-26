@@ -873,7 +873,9 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
 app.post('/webhook/salesforce', (req, res) => {
     let body = JSON.parse(req.body);
     let user = body.UID;
-    let event = body.Response;
+    let event = body.Intent;
+    let response = body.Response;
+    let subject = body.Subject;
 
     pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'FB' LIMIT 1", [user])
         .then(res => {
@@ -884,17 +886,20 @@ app.post('/webhook/salesforce', (req, res) => {
             if (!sessionIds.has(handle)) {
                 sessionIds.set(handle, uuid.v1());
             }
+            if (isDefined(intent)) {
+                let request = apiAiService.eventRequest({
+                    name: event,
+                }, {
+                    sessionId: sessionIds.get(handle)
+                });
 
-            let request = apiAiService.eventRequest({
-                name: event,
-            }, {
-                sessionId: sessionIds.get(handle)
-            });
+                request.on('response', (response) => { handleResponse(response, handle); });
+                request.on('error', (error) => console.error(error));
 
-            request.on('response', (response) => { handleResponse(response, handle); });
-            request.on('error', (error) => console.error(error));
-
-            request.end();
+                request.end();
+            } else if (isDefined(response) && isDefined(subject)) {
+                facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '".\n' + response });
+            }
         });
 });
 
