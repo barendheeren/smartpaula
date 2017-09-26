@@ -449,31 +449,33 @@ function getNokiaMeasurements(userid) {
                 group.measures.forEach(measurement => {
                     let type = measurement.type;
                     let value = measurement.value * Math.pow(10, measurement.unit);
-                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'SF'", clientRes => {
-                        let client = clientRes.rows[0];
-                        measureTypes.push(type);
-                        if (type === 9) {
-                            pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value]);
-                        }
-                        if (type === 10) {
-                            pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value]);
-                        }
-                        if (type === 11) {
-                            pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value]);
-                        }
-                        if (type === 1) {
-                            pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
+                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'SF'", [user.client], clientRes => {
+                        if (clientRes.rowCount) {
+                            let client = clientRes.rows[0];
+                            measureTypes.push(type);
+                            if (type === 9) {
+                                pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value]);
+                            }
+                            if (type === 10) {
+                                pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value]);
+                            }
+                            if (type === 11) {
+                                pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value]);
+                            }
+                            if (type === 1) {
+                                pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
 
-                            salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
-                                salesforce.sobject('Weight_Measurements__c')
-                                    .create({
-                                        RecordTypeId: '0120Y0000015YRyQAM',
-                                        Account__c: client.handle,
-                                        Date_Time_Measurement__c: date,
-                                        Unit_Type__c: 'kg',
-                                        Value__c: value
-                                    });
-                            })
+                                salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
+                                    salesforce.sobject('Weight_Measurements__c')
+                                        .create({
+                                            RecordTypeId: '0120Y0000015YRyQAM',
+                                            Account__c: client.handle,
+                                            Date_Time_Measurement__c: date,
+                                            Unit_Type__c: 'kg',
+                                            Value__c: value
+                                        });
+                                })
+                            }
                         }
                     });
                 });
