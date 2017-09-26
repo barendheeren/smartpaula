@@ -1,6 +1,7 @@
 'use strict';
 
 const apiai = require('apiai');
+const jsforce = require('jsforce');
 const express = require('express');
 const bodyParser = require('body-parser');
 const uuid = require('node-uuid');
@@ -53,6 +54,8 @@ const facebook = new Facebook(FB_VERIFY_TOKEN, FB_PAGE_ACCESS_TOKEN);
 
 /** @const {Vitadock} Vitadock API interface */
 const vitadock = new Vitadock(VITADOCK_API_TOKEN, VITADOCK_API_SECRET);
+
+const salesforce = new jsforce.connection();
 
 /** @const {Map} Map of existing API.AI session ID's */
 const sessionIds = new Map();
@@ -146,6 +149,12 @@ function handleResponse(response, sender) {
                 // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
                 if (DEFAULT_INTENTS.includes(intent)) {
                     pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
+                        salesforce.login('', '', () => {
+                            salesforce.sobject('Case').create({
+
+                            });
+                        });
+
                         let fbuser = result.rows[0].handle;
                         console.log('found user ', fbuser, result.rows[0]);
                         facebook.getProfile(fbuser, (profile) => {
@@ -518,7 +527,20 @@ function isDefined(obj) {
 
 function createNewClient(handle, type) {
     return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type])
-        .then(res => { return res.rows[0].id; });
+        .then(res => {
+            facebook.getProfile(handle, (profile) => {
+                salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
+                    salesforce.sobject('Account').create({
+                        name: profile.first_name + ' ' + profile.last_name,
+                        RecordTypeId: '0120Y0000015YRyQAM'
+                    }, function(err, ret) {
+                        if (err || !ret.success) { return console.error(err, ret); }
+                        pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [res.rows[0].id, ret.id, 'SF'])
+                    });
+                });
+            });
+            return res.rows[0].id;
+        });
 }
 
 function getOrRegisterUser(handle, type) {
@@ -581,6 +603,11 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                         pool.query('UPDATE connect_nokia SET oauth_access_token = $1, oauth_access_secret = $2, nokia_user = $3, last_update = \'epoch\' WHERE client = $4', [oAuthToken, oAuthTokenSecret, userid, client]).then(() => {
                             pool.query("SELECT handle FROM clients WHERE id = $1", [client]).then(result => {
                                 let handle = result.rows[0].handle;
+
+                                if (!sessionIds.has(sender)) {
+                                    sessionIds.set(sender, uuid.v1());
+                                }
+
                                 let request = apiAiService.eventRequest({
                                     name: 'nokia_connected'
                                 }, {
