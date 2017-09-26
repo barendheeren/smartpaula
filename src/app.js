@@ -537,7 +537,8 @@ function createNewClient(handle, type) {
                         GUID__c: res.rows[0].id
                     }, function(err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }
-                        //pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [res.rows[0].id, ret.id, 'SF'])
+                        console.log(err, ret);
+                        pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [res.rows[0].id, ret.id, 'SF'])
                     });
                 });
             });
@@ -547,7 +548,7 @@ function createNewClient(handle, type) {
 
 function getOrRegisterUser(handle, type) {
     return pool.query("SELECT * FROM clients WHERE handle = $1 or id = $1", [handle]).then(res => {
-        if (!res.rowsCount) {
+        if (!res.rowCount) {
             return createNewClient(handle, 'FB');
         } else {
             return res.rows[0].id;
