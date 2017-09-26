@@ -80,6 +80,8 @@ function handleResponse(response, sender) {
         /** Additional parameters passed by the intent @type {object} */
         let parameters = response.result.parameters;
 
+        console.log(resolvedQuery);
+
         getOrRegisterUser(sender, 'FB').then(sender => {
             logAction(sender, intent);
 
