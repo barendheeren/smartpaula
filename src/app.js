@@ -449,7 +449,7 @@ function getNokiaMeasurements(userid) {
                 group.measures.forEach(measurement => {
                     let type = measurement.type;
                     let value = measurement.value * Math.pow(10, measurement.unit);
-                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'SF'", [user.client], clientRes => {
+                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'SF'", [user.client]).then(clientRes => {
                         if (clientRes.rowCount) {
                             let client = clientRes.rows[0];
                             measureTypes.push(type);
