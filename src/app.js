@@ -579,17 +579,20 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                         }
 
                         pool.query('UPDATE connect_nokia SET oauth_access_token = $1, oauth_access_secret = $2, nokia_user = $3, last_update = \'epoch\' WHERE client = $4', [oAuthToken, oAuthTokenSecret, userid, client]).then(() => {
-                            let request = apiAiService.eventRequest({
-                                name: 'nokia_connected'
-                            }, {
-                                sessionId: sessionIds.get(client)
-                            });
+                            pool.query("SELECT handle FROM clients WHERE id = $1", [client]).then(result => {
+                                let handle = result.rows[0].handle;
+                                let request = apiAiService.eventRequest({
+                                    name: 'nokia_connected'
+                                }, {
+                                    sessionId: sessionIds.get(handle)
+                                });
 
-                            request.on('response', (response) => { handleResponse(response, client); });
-                            request.on('error', (error) => console.error(error));
+                                request.on('response', (response) => { handleResponse(response, client); });
+                                request.on('error', (error) => console.error(error));
 
-                            request.end();
-                            subscribeToNokia(client);
+                                request.end();
+                                subscribeToNokia(client);
+                            })
                         });
 
                     });
