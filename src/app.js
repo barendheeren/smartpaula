@@ -473,12 +473,16 @@ function getNokiaMeasurements(userid) {
                                     console.log(salesforce);
                                     salesforce.sobject('Weight_Measurements__c')
                                         .create({
-                                            RecordTypeId: '0120Y0000015YRyQAM',
-                                            Account__c: client.handle,
-                                            Date_Time_Measurement__c: date,
-                                            Unit_Type__c: 'kg',
-                                            Value__c: value
-                                        });
+                                                RecordTypeId: '0120Y0000015YRyQAM',
+                                                Account__c: client.handle,
+                                                Date_Time_Measurement__c: date,
+                                                Unit_Type__c: 'kg',
+                                                Value__c: value
+                                            },
+                                            function(err, ret) {
+                                                if (err || !ret.success) { return console.error(err, ret); }
+                                                console.log(err, ret);
+                                            });
                                 })
                             }
                         }
