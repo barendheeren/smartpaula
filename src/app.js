@@ -200,7 +200,7 @@ function handleResponse(response, sender) {
 
                         // User wants to start a new questionnare
                     case "start_vragenlijst":
-                        pool.query({ text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
+                        pool.query({ text: 'INSERT INTO vragenlijsten (id, client, vragenlijst) VALUES($1, $2, $3)', values: [uuid.v4(), sender, parameters.vragenlijst] })
                             .catch(e => console.error(e, e.stack));
                         break;
 
