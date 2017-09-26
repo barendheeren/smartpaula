@@ -83,6 +83,9 @@ function handleResponse(response, sender) {
         console.log(resolvedQuery);
 
         getOrRegisterUser(sender, 'FB').then(sender => {
+            if (resolvedQuery === '👍') {
+
+            }
             logAction(sender, intent);
 
             if (isDefined(responseData) && isDefined(responseData.facebook)) {
@@ -744,7 +747,7 @@ app.post('/webhook/scheduler', (req, res) => {
         '(SELECT distinct on (client) measure_blood.client, \'blood\' as measurement_type, measure_date, sent_message FROM measure_blood LEFT JOIN connect_nokia ON measure_blood.client = connect_nokia.client ORDER BY client, measure_date DESC)' +
         'UNION ALL ' +
         '(SELECT distinct on (client) measure_weight.client, \'weight\' as measurement_type, measure_date, sent_message FROM measure_weight LEFT JOIN connect_nokia ON measure_weight.client = connect_nokia.client ORDER BY client, measure_date DESC)' +
-        ') as latest_records  WHERE measure_date < (CURRENT_DATE - INTERVAL \'1 week\')').then(result => {
+        ') as latest_records WHERE measure_date < (CURRENT_DATE - INTERVAL \'1 week\')').then(result => {
         let send = {}
         result.rows.forEach(row => {
             // Define what messages we need to send
@@ -767,24 +770,29 @@ app.post('/webhook/scheduler', (req, res) => {
             }
 
             send[user].forEach(type => {
-                let request = apiAiService.eventRequest({
-                    name: 'old_measurement_' + type
-                }, {
-                    sessionId: sessionIds.get(user)
-                });
-                request.on('response', (response) => { handleResponse(response, user); });
-                request.on('error', (error) => console.error(error));
-                request.end();
+                pool.query('SELECT registration_date FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
+                    .then(res => {
+                        if (res.rowCount > 0) {
+                            let request = apiAiService.eventRequest({
+                                name: 'old_measurement_' + type
+                            }, {
+                                sessionId: sessionIds.get(user)
+                            });
+                            request.on('response', (response) => { handleResponse(response, user); });
+                            request.on('error', (error) => console.error(error));
+                            request.end();
 
-                pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
-                    let userRecord = result.rows[0];
-                    let sentTypes = userRecord.sent_message.split(',');
-                    if (!sentTypes.includes(type)) {
-                        sentTypes.push(type);
-                    }
-                    pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
-                })
-            })
+                            pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
+                                let userRecord = result.rows[0];
+                                let sentTypes = userRecord.sent_message.split(',');
+                                if (!sentTypes.includes(type)) {
+                                    sentTypes.push(type);
+                                }
+                                pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
+                            });
+                        }
+                    });
+            });
         }
     });
     res.status(200).send()
