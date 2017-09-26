@@ -530,7 +530,7 @@ function createNewClient(handle, type) {
         .then(res => {
             facebook.getProfile(handle, (profile) => {
                 console.log(res, handle, profile);
-                console.log(res.rows[0]);
+                console.log(json.stringify(res.rows));
                 salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
                     salesforce.sobject('Account').create({
                         name: profile.first_name + ' ' + profile.last_name,
