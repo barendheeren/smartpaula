@@ -547,7 +547,7 @@ function createNewClient(handle, type) {
 
 function getOrRegisterUser(handle, type) {
     return pool.query("SELECT * FROM clients WHERE handle = $1 or id = $1", [handle]).then(res => {
-        if (!res.rows.length) {
+        if (!res.rowsCount) {
             return createNewClient(handle, 'FB');
         } else {
             return res.rows[0].id;
