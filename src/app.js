@@ -519,7 +519,7 @@ function isDefined(obj) {
 }
 
 function createNewClient(handle, type) {
-    return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type]).then(res => { console.log(res); return res.rows });
+    return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type]).then(res => { console.log(res); return res.rows[0].id });
 }
 
 function getOrRegisterUser(handle, type) {
