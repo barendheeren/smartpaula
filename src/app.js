@@ -160,7 +160,6 @@ function handleResponse(response, sender) {
                             salesforce.sobject('Case')
                                 .create({
                                         AccountId: sender,
-                                        RecordTypeId: '0120Y0000015YRyQAM',
                                         Status: 'New',
                                         Origin: 'Smart Susan',
                                         Subject: resolvedQuery,
