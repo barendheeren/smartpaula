@@ -898,7 +898,7 @@ app.post('/webhook/salesforce', (req, res) => {
                 } else if (isDefined(response) && isDefined(subject)) {
                     facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
                         () => {
-                            facebook.sendMessage(handle, { response });
+                            facebook.sendMessage(handle, { text: response });
                         });
                 }
             } else {
