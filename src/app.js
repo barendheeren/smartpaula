@@ -230,11 +230,10 @@ function handleResponse(response, sender) {
                                     // Get a reqest token, and a login url to send to the user.
                                     nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
                                         if (!error) {
-                                            console.log('Looking up sender ', sender);
                                             pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
                                                 let fbuser = result.rows[0].handle;
-                                                console.log('found user ', fbuser, result.rows[0]);
                                                 facebook.sendMessage(fbuser, { text: url });
+                                                console.log(sender, oAuthToken, oAuthTokenSecret);
                                                 pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
                                                     pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
                                                         .catch(e => console.error(e, e.stack));
