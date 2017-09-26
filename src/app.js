@@ -159,12 +159,16 @@ function handleResponse(response, sender) {
                         salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
                             salesforce.sobject('Case')
                                 .create({
-                                    AccountId: sender,
-                                    RecordTypeId: '0120Y0000015YRyQAM',
-                                    Status: 'New',
-                                    Origin: 'Smart Susan',
-                                    Subject: resolvedQuery,
-                                });
+                                        AccountId: sender,
+                                        RecordTypeId: '0120Y0000015YRyQAM',
+                                        Status: 'New',
+                                        Origin: 'Smart Susan',
+                                        Subject: resolvedQuery,
+                                    },
+                                    function(err, ret) {
+                                        if (err || !ret.success) { return console.error(err, ret); }
+                                        console.log(err, ret);
+                                    });
                         });
 
                         let fbuser = result.rows[0].handle;
