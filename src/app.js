@@ -167,7 +167,6 @@ function handleResponse(response, sender) {
                                     },
                                     function(err, ret) {
                                         if (err || !ret.success) { return console.error(err, ret); }
-                                        console.log(err, ret);
                                     });
                         });
                     });
@@ -473,7 +472,6 @@ function getNokiaMeasurements(userid) {
                                             },
                                             function(err, ret) {
                                                 if (err || !ret.success) { return console.error(err, ret); }
-                                                console.log(err, ret);
                                             });
                                 })
                             }
@@ -554,7 +552,7 @@ function isDefined(obj) {
 
 function createNewClient(handle, type) {
     let id = uuid.v4();
-    return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [id, handle, type])
+    return pool.query("INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))", [id, handle, type])
         .then(res => {
             facebook.getProfile(handle, (profile) => {
                 salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
@@ -564,8 +562,7 @@ function createNewClient(handle, type) {
                         GUID__c: id
                     }, function(err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }
-                        console.log(err, ret);
-                        pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [id, ret.id, 'SF'])
+                        pool.query('INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))', [id, ret.id, 'SF'])
                     });
                 });
             });
