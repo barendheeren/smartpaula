@@ -161,7 +161,7 @@ function handleResponse(response, sender) {
                                 .create({
                                     AccountId: sender,
                                     RecordTypeId: '0120Y0000015YRyQAM',
-                                    Status: '',
+                                    Status: 'New',
                                     Origin: 'Smart Susan',
                                     Subject: resolvedQuery,
                                 });
