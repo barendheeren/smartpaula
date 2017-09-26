@@ -155,7 +155,7 @@ function handleResponse(response, sender) {
 
                 // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
                 if (DEFAULT_INTENTS.includes(intent)) {
-                    pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
+                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                         let handle = result.rows[0].handle;
                         salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
                             salesforce.sobject('Case')
@@ -169,15 +169,6 @@ function handleResponse(response, sender) {
                                         if (err || !ret.success) { return console.error(err, ret); }
                                         console.log(err, ret);
                                     });
-                        });
-
-                        let fbuser = result.rows[0].handle;
-                        console.log('found user ', fbuser, result.rows[0]);
-                        facebook.getProfile(fbuser, (profile) => {
-                            // Forward the message to a predefined facebook user
-
-                            // Disabled while in development
-                            facebook.sendMessage(DEFAULT_INTENT_REFER_TO, { text: 'Hallo, ik heb een vraag gekregen van ' + profile.first_name + ' ' + profile.last_name + ' die ik niet kan beantwoorden:\n "' + resolvedQuery + '"' })
                         });
                     });
                 }
@@ -477,7 +468,7 @@ function getNokiaMeasurements(userid) {
                                     salesforce.sobject('Weight_Measurements__c')
                                         .create({
                                                 Account__c: client.handle,
-                                                Date_Time_Measurement__c: date,
+                                                Date_Time_Measurement__c: Date(date).toISOString,
                                                 Value__c: value
                                             },
                                             function(err, ret) {
