@@ -145,11 +145,15 @@ function handleResponse(response, sender) {
 
                 // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
                 if (DEFAULT_INTENTS.includes(intent)) {
-                    facebook.getProfile(sender, (profile) => {
-                        // Forward the message to a predefined facebook user
+                    pool.query('SELECT handle FROM user WHERE id = $1', [sender]).then(result => {
+                        let fbuser = result.rows[0].handle;
+                        console.log('found user ', fbuser, result.rows[0]);
+                        facebook.getProfile(fbuser, (profile) => {
+                            // Forward the message to a predefined facebook user
 
-                        // Disabled while in development
-                        facebook.sendMessage(DEFAULT_INTENT_REFER_TO, { text: 'Hallo, ik heb een vraag gekregen van ' + profile.first_name + ' ' + profile.last_name + ' die ik niet kan beantwoorden:\n "' + resolvedQuery + '"' })
+                            // Disabled while in development
+                            facebook.sendMessage(DEFAULT_INTENT_REFER_TO, { text: 'Hallo, ik heb een vraag gekregen van ' + profile.first_name + ' ' + profile.last_name + ' die ik niet kan beantwoorden:\n "' + resolvedQuery + '"' })
+                        });
                     });
                 }
 
@@ -274,7 +278,11 @@ function handleResponse(response, sender) {
                 // Send messages asynchronously, to ensure they arrive in the right order 
                 async.eachSeries(splittedText, (textPart, callback) => {
                     message.text = textPart;
-                    facebook.sendMessage(sender, message, callback);
+                    pool.query('SELECT handle FROM user WHERE id = $1', [sender]).then(result => {
+                        let fbuser = result.rows[0].handle;
+                        console.log('found user ', fbuser, result.rows[0]);
+                        facebook.sendMessage(fbuser, message, callback);
+                    });
                 });
             }
 
