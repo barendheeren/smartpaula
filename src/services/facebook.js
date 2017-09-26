@@ -56,29 +56,32 @@ Facebook.prototype.doSubscribeRequest = function() {
  * @param {function} callback Callback function, called when the sending has completed (failed or succeeded)
  */
 Facebook.prototype.sendMessage = function(sender, messageData, callback) {
-    this.sendSenderAction(sender, 'typing_off');
-    request({
-        url: 'https://graph.facebook.com/v2.6/me/messages',
-        qs: {
-            access_token: this._pageAccessToken
-        },
-        method: 'POST',
-        json: {
-            recipient: {
-                id: sender
-            },
-            message: messageData
-        }
-    }, (error, response, body) => {
-        if (error) {
-            console.log('Error sending message: ', error);
-        } else if (response.body.error) {
-            console.log('Error: ', response.body.error);
-        }
+    this.sendSenderAction(sender, 'typing_off', () => {
+        setTimeout(() => {
+            request({
+                url: 'https://graph.facebook.com/v2.6/me/messages',
+                qs: {
+                    access_token: this._pageAccessToken
+                },
+                method: 'POST',
+                json: {
+                    recipient: {
+                        id: sender
+                    },
+                    message: messageData
+                }
+            }, (error, response, body) => {
+                if (error) {
+                    console.log('Error sending message: ', error);
+                } else if (response.body.error) {
+                    console.log('Error: ', response.body.error);
+                }
 
-        if (callback) {
-            callback();
-        }
+                if (callback) {
+                    callback();
+                }
+            }, 5000);
+        });
     });
 }
 
