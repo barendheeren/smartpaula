@@ -529,6 +529,7 @@ function createNewClient(handle, type) {
     return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type])
         .then(res => {
             facebook.getProfile(handle, (profile) => {
+                console.log(res, handle, profile);
                 salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
                     salesforce.sobject('Account').create({
                         name: profile.first_name + ' ' + profile.last_name,
