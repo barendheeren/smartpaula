@@ -534,7 +534,7 @@ function createNewClient(handle, type) {
                     salesforce.sobject('Account').create({
                         name: profile.first_name + ' ' + profile.last_name,
                         RecordTypeId: '0120Y0000015YRyQAM',
-                        GUID__c: id
+                        GUID__c: id.substring(0, 16)
                     }, function(err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }
                         console.log(err, ret);
