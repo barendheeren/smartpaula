@@ -532,7 +532,8 @@ function createNewClient(handle, type) {
                 salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
                     salesforce.sobject('Account').create({
                         name: profile.first_name + ' ' + profile.last_name,
-                        RecordTypeId: '0120Y0000015YRyQAM'
+                        RecordTypeId: '0120Y0000015YRyQAM',
+                        GUID__c: res.rows[0].id
                     }, function(err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }
                         pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [res.rows[0].id, ret.id, 'SF'])
