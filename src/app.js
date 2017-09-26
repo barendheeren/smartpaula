@@ -536,7 +536,7 @@ function createNewClient(handle, type) {
                         GUID__c: res.rows[0].id
                     }, function(err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }
-                        pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [res.rows[0].id, ret.id, 'SF'])
+                        //pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [res.rows[0].id, ret.id, 'SF'])
                     });
                 });
             });
