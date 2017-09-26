@@ -67,7 +67,7 @@ function handleResponse(response, sender) {
     if (isDefined(response.result)) {
         let /** string */ responseText = response.result.fulfillment.speech;
         let /** object */ responseData = response.result.fulfillment.data;
-        let /** string */ resolvedQuery = response.result.resolvedQuery
+        let /** string */ resolvedQuery = response.result.resolvedQuery;
 
         /** The API.AI intent @type {string} */
         let intent = response.result.metadata.intentId;
@@ -77,246 +77,235 @@ function handleResponse(response, sender) {
         /** Additional parameters passed by the intent @type {object} */
         let parameters = response.result.parameters;
 
-        getOrRegisterUser(sender, 'FB').then(result => console.log('GETORREGISTER', result));
-
-        if (isDefined(responseData) && isDefined(responseData.facebook)) {
-            // If the response is specifically a facebook message, send it directly to the user.
-            // (Is this ever used?)
-            if (!Array.isArray(responseData.facebook)) {
-                try {
-                    console.log('Response as formatted message');
-                    facebook.sendMessage(sender, responseData.facebook + ' geformatteerd bericht');
-                } catch (err) {
-                    facebook.sendMessage(sender, {
-                        text: err.message
-                    });
-                }
-            } else {
-                responseData.facebook.forEach((facebookMessage) => {
+        getOrRegisterUser(sender, 'FB').then(sender => {
+            if (isDefined(responseData) && isDefined(responseData.facebook)) {
+                // If the response is specifically a facebook message, send it directly to the user.
+                // (Is this ever used?)
+                if (!Array.isArray(responseData.facebook)) {
                     try {
-                        if (facebookMessage.sender_action) {
-                            console.log('Response as sender action');
-                            facebook.sendSenderAction(sender, facebookMessage.sender_action);
-                        } else {
-                            console.log('Response as formatted message');
-                            facebook.sendMessage(sender, facebookMessage);
-                        }
+                        console.log('Response as formatted message');
+                        facebook.sendMessage(sender, responseData.facebook + ' geformatteerd bericht');
                     } catch (err) {
                         facebook.sendMessage(sender, {
                             text: err.message
                         });
                     }
-                });
-            }
-        } else if (isDefined(responseText)) {
-            let message = {
-                text: responseText
-            };
-            /**
-             * These are the standard questionnare responses
-             * @type {Array}
-             */
-            let quickReplies = [{
-                    "content_type": "text",
-                    "title": "😁",
-                    "payload": "4"
-                },
-                {
-                    "content_type": "text",
-                    "title": "🙂",
-                    "payload": "3"
-                },
-                {
-                    "content_type": "text",
-                    "title": "😞",
-                    "payload": "2"
-                },
-                {
-                    "content_type": "text",
-                    "title": "😡",
-                    "payload": "1"
-                },
-                {
-                    "content_type": "text",
-                    "title": "N.v.t",
-                    "payload": "0"
-                }
-            ];
-            console.log('Response as text message');
-
-            // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
-            if (DEFAULT_INTENTS.includes(intent)) {
-                facebook.getProfile(sender, (profile) => {
-                    // Forward the message to a predefined facebook user
-
-                    // Disabled while in development
-                    facebook.sendMessage(DEFAULT_INTENT_REFER_TO, { text: 'Hallo, ik heb een vraag gekregen van ' + profile.first_name + ' ' + profile.last_name + ' die ik niet kan beantwoorden:\n "' + resolvedQuery + '"' })
-                });
-            }
-
-            switch (action) {
-                // User has answered a new PAM question
-                // TODO: Create some way of updating questionnares and questions that works on all questionnares
-                case "pam_sum":
-                    let payload = response.result.payload;
-                    let score = parameters.pam_score;
-
-                    if (typeof score !== 'undefined') {
-                        score = score || 0;
-                        pool.query('SELECT id FROM vragenlijsten WHERE fbuser = $1 ORDER BY gestart DESC LIMIT 1', [sender])
-                            .then(res => {
-                                let vragenlijst = res.rows[0].id;
-                                pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
-                                    .then(res => {
-                                        let answer_no = res.rowCount + 1;
-                                        pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, score, answer_no]);
-                                    });
+                } else {
+                    responseData.facebook.forEach((facebookMessage) => {
+                        try {
+                            if (facebookMessage.sender_action) {
+                                console.log('Response as sender action');
+                                facebook.sendSenderAction(sender, facebookMessage.sender_action);
+                            } else {
+                                console.log('Response as formatted message');
+                                facebook.sendMessage(sender, facebookMessage);
+                            }
+                        } catch (err) {
+                            facebook.sendMessage(sender, {
+                                text: err.message
                             });
-                    }
-                    message.quick_replies = quickReplies;
-
-                    response.result.fulfillment.messages.forEach(function(message) {
-                        let payload = message.payload;
-                        if (isDefined(payload) && isDefined(payload.vragenlijst_end) && payload.vragenlijst_end) {
-                            delete message.quick_replies;
                         }
                     });
-                    break;
-
-                case "sf12-sum":
-                    break;
-
-                    // User wants to start a new questionnare
-                case "start_vragenlijst":
-                    pool.query({ text: 'INSERT INTO vragenlijsten (fbuser, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
-                        .catch(e => console.error(e, e.stack));
-                    break;
-
-                    // User wants to create a new wunderlist-list
-                case "create_wunderlist":
-                    pool.query("SELECT * FROM connect_wunderlist WHERE fbuser = $1", [sender]).then(result => {
-                        let connection = result.rows[0];
-                        wunderlist.createList(connection.access_token).done(list => {
-                            pool.query("INSERT INTO wunderlist_lists (fbuser, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
-                                .then(() => {
-                                    let request = apiAiService.eventRequest({
-                                        name: 'new_list',
-                                        data: {
-                                            name: list.title
-                                        }
-                                    }, {
-                                        sessionId: sessionIds.get(sender)
-                                    });
-                                    request.on('response', (response) => { handleResponse(response, sender); });
-                                    request.on('error', (error) => console.error(error));
-
-                                    request.end();
-                                }).catch(e => console.error(e, e.stack));;
-                            wunderlist.createWebhook(connection.access_token, list.id, HOSTNAME + 'webhook/wunderlist/' + sender);
-                        });
-                    });
-                    break;
-
-                    // User wants to connect to a service
-                case "connect_service":
-                    let service = response.result.parameters.service;
-                    if (isDefined(service)) {
-                        switch (service) {
-                            // So far, only Nokia health (formerly Withings) is supported
-                            case "Nokia":
-                                // Get a reqest token, and a login url to send to the user.
-                                nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
-                                    if (!error) {
-                                        facebook.sendMessage(sender, { text: url });
-                                        pool.query('DELETE FROM connect_nokia WHERE fbuser = $1', [sender]).then(() => {
-                                            pool.query('INSERT INTO connect_nokia (fbuser, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
-                                                .catch(e => console.error(e, e.stack));
-                                        }).catch(e => console.error(e, e.stack));
-                                    }
-                                });
-                                break;
-                            case "Wunderlist":
-                                message.text += '\n' + HOSTNAME + 'connect/wunderlist/' + sender;
-                                break;
-                            case 'Vitadock':
-                                console.log(vitadock);
-                                vitadock.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
-                                    if (error) {
-                                        console.log(error);
-                                    } else {
-                                        facebook.sendMessage(sender, { text: url });
-                                        pool.query('DELETE FROM connect_vitadock WHERE fbuser = $1', [sender]).then(() => {
-                                            pool.query('INSERT INTO connect_vitadock (fbuser, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
-                                                .catch(e => console.error(e, e.stack));
-                                        }).catch(e => console.error(e, e.stack));
-                                    }
-                                });
-                        }
-                    }
-                    break;
-                case "my_facebook_id":
-                    message.text += '\n' + sender;
-                    break;
-                default:
-                    console.log('Received an unknown action from API.ai: "' + action + '"');
-            }
-
-            if (intentName === "Connected Wunderlist") {
-                message.quick_replies = [{
+                }
+            } else if (isDefined(responseText)) {
+                let message = {
+                    text: responseText
+                };
+                /**
+                 * These are the standard questionnare responses
+                 * @type {Array}
+                 */
+                let quickReplies = [{
                         "content_type": "text",
-                        "title": "Nieuwe lijst aanmaken",
-                        "payload": "Nieuwe boodschappenlijst"
+                        "title": "😁",
+                        "payload": "4"
                     },
                     {
                         "content_type": "text",
-                        "title": "Niet nu",
-                        "payload": "Niet nu"
+                        "title": "🙂",
+                        "payload": "3"
+                    },
+                    {
+                        "content_type": "text",
+                        "title": "😞",
+                        "payload": "2"
+                    },
+                    {
+                        "content_type": "text",
+                        "title": "😡",
+                        "payload": "1"
+                    },
+                    {
+                        "content_type": "text",
+                        "title": "N.v.t",
+                        "payload": "0"
                     }
-                ]
-            } else if (intentName === 'PAM_vragenlijst_einde') {
-                delete message.quick_replies
-            }
+                ];
+                console.log('Response as text message');
 
-            // facebook API limit for text length is 640,
-            // so we must split message if needed
-            let splittedText = splitResponse(message.text);
-            // Send messages asynchronously, to ensure they arrive in the right order 
-            async.eachSeries(splittedText, (textPart, callback) => {
-                message.text = textPart;
-                facebook.sendMessage(sender, message, callback);
-            });
-        }
+                // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
+                if (DEFAULT_INTENTS.includes(intent)) {
+                    facebook.getProfile(sender, (profile) => {
+                        // Forward the message to a predefined facebook user
 
-        // Some messages Have a custom payload, we need to handle this payload;
-        response.result.fulfillment.messages.forEach(function(message) {
-            let payload = message.payload
-            if (isDefined(payload)) {
-                /** @type {string} */
-                let followUp = payload.followUp;
-                /** @type {boolean} */
-                let vragenlijst_end = payload.vragenlijst_end;
-
-                if (isDefined(followUp)) {
-                    let request = apiAiService.eventRequest({
-                        name: followUp
-                    }, {
-                        sessionId: sessionIds.get(sender)
-                    });
-
-                    request.on('response', (response) => { handleResponse(response, sender); });
-                    request.on('error', (error) => console.error(error));
-                    request.end();
-                }
-
-                if (isDefined(vragenlijst_end) && vragenlijst_end) {
-                    pool.query('SELECT id FROM vragenlijsten WHERE fbuser = $1 ORDER BY gestart DESC LIMIT 1', [sender]).then(res => {
-                        let vragenlijst = res.rows[0].id;
-                        pool.query('UPDATE vragenlijsten set gestopt = (SELECT NOW()) WHERE id = $1', [vragenlijst])
+                        // Disabled while in development
+                        facebook.sendMessage(DEFAULT_INTENT_REFER_TO, { text: 'Hallo, ik heb een vraag gekregen van ' + profile.first_name + ' ' + profile.last_name + ' die ik niet kan beantwoorden:\n "' + resolvedQuery + '"' })
                     });
                 }
-            }
-        }, this);
 
+                switch (action) {
+                    // User has answered a new PAM question
+                    // TODO: Create some way of updating questionnares and questions that works on all questionnares
+                    case "pam_sum":
+                        let payload = response.result.payload;
+                        let score = parameters.pam_score;
+
+                        if (typeof score !== 'undefined') {
+                            score = score || 0;
+                            pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
+                                .then(res => {
+                                    let vragenlijst = res.rows[0].id;
+                                    pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
+                                        .then(res => {
+                                            let answer_no = res.rowCount + 1;
+                                            pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, score, answer_no]);
+                                        });
+                                });
+                        }
+                        message.quick_replies = quickReplies;
+
+                        response.result.fulfillment.messages.forEach(function(message) {
+                            let payload = message.payload;
+                            if (isDefined(payload) && isDefined(payload.vragenlijst_end) && payload.vragenlijst_end) {
+                                delete message.quick_replies;
+                            }
+                        });
+                        break;
+
+                    case "sf12-sum":
+                        break;
+
+                        // User wants to start a new questionnare
+                    case "start_vragenlijst":
+                        pool.query({ text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
+                            .catch(e => console.error(e, e.stack));
+                        break;
+
+                        // User wants to create a new wunderlist-list
+                    case "create_wunderlist":
+                        pool.query("SELECT * FROM connect_wunderlist WHERE client = $1", [sender]).then(result => {
+                            let connection = result.rows[0];
+                            wunderlist.createList(connection.access_token).done(list => {
+                                pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
+                                    .then(() => {
+                                        let request = apiAiService.eventRequest({
+                                            name: 'new_list',
+                                            data: {
+                                                name: list.title
+                                            }
+                                        }, {
+                                            sessionId: sessionIds.get(sender)
+                                        });
+                                        request.on('response', (response) => { handleResponse(response, sender); });
+                                        request.on('error', (error) => console.error(error));
+
+                                        request.end();
+                                    }).catch(e => console.error(e, e.stack));;
+                                wunderlist.createWebhook(connection.access_token, list.id, HOSTNAME + 'webhook/wunderlist/' + sender);
+                            });
+                        });
+                        break;
+
+                        // User wants to connect to a service
+                    case "connect_service":
+                        let service = response.result.parameters.service;
+                        if (isDefined(service)) {
+                            switch (service) {
+                                // So far, only Nokia health (formerly Withings) is supported
+                                case "Nokia":
+                                    // Get a reqest token, and a login url to send to the user.
+                                    nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
+                                        if (!error) {
+                                            pool.query('SELECT handle FROM user WHERE id = $1', [sender]).then(result => {
+                                                let fbuser = result.rows[0].handle;
+                                                facebook.sendMessage(fbuser, { text: url });
+                                                pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
+                                                    pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
+                                                        .catch(e => console.error(e, e.stack));
+                                                }).catch(e => console.error(e, e.stack));
+                                            });
+                                        }
+                                    });
+                                    break;
+                                case "Wunderlist":
+                                    message.text += '\n' + HOSTNAME + 'connect/wunderlist/' + sender;
+                                    break;
+                            }
+                        }
+                        break;
+                    case "my_facebook_id":
+                        message.text += '\n' + sender;
+                        break;
+                    default:
+                        console.log('Received an unknown action from API.ai: "' + action + '"');
+                }
+
+                if (intentName === "Connected Wunderlist") {
+                    message.quick_replies = [{
+                            "content_type": "text",
+                            "title": "Nieuwe lijst aanmaken",
+                            "payload": "Nieuwe boodschappenlijst"
+                        },
+                        {
+                            "content_type": "text",
+                            "title": "Niet nu",
+                            "payload": "Niet nu"
+                        }
+                    ]
+                } else if (intentName === 'PAM_vragenlijst_einde') {
+                    delete message.quick_replies;
+                }
+
+                // facebook API limit for text length is 640,
+                // so we must split message if needed
+                let splittedText = splitResponse(message.text);
+                // Send messages asynchronously, to ensure they arrive in the right order 
+                async.eachSeries(splittedText, (textPart, callback) => {
+                    message.text = textPart;
+                    facebook.sendMessage(sender, message, callback);
+                });
+            }
+
+            // Some messages Have a custom payload, we need to handle this payload;
+            response.result.fulfillment.messages.forEach(function(message) {
+                let payload = message.payload;
+                if (isDefined(payload)) {
+                    /** @type {string} */
+                    let followUp = payload.followUp;
+                    /** @type {boolean} */
+                    let vragenlijst_end = payload.vragenlijst_end;
+
+                    if (isDefined(followUp)) {
+                        let request = apiAiService.eventRequest({
+                            name: followUp
+                        }, {
+                            sessionId: sessionIds.get(sender)
+                        });
+
+                        request.on('response', (response) => { handleResponse(response, sender); });
+                        request.on('error', (error) => console.error(error));
+                        request.end();
+                    }
+
+                    if (isDefined(vragenlijst_end) && vragenlijst_end) {
+                        pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender]).then(res => {
+                            let vragenlijst = res.rows[0].id;
+                            pool.query('UPDATE vragenlijsten set gestopt = (SELECT NOW()) WHERE id = $1', [vragenlijst])
+                        });
+                    }
+                }
+            }, this);
+        });
     }
 }
 
@@ -422,7 +411,7 @@ function sendMeasurementMessage(types, user) {
 }
 
 function getNokiaMeasurements(userid) {
-    pool.query('SELECT *, extract(epoch from last_update) as time FROM connect_nokia WHERE fbuser = $1 OR nokia_user = $1', [userid]).then(res => {
+    pool.query('SELECT *, extract(epoch from last_update) as time FROM connect_nokia WHERE client = $1 OR nokia_user = $1', [userid]).then(res => {
         let user = res.rows[0];
         nokia.getMeasurements(user.nokia_user, user.oauth_access_token, user.oauth_access_secret, user.time, measureGroups => {
             let measureTypes = [];
@@ -434,21 +423,21 @@ function getNokiaMeasurements(userid) {
                     let value = measurement.value * Math.pow(10, measurement.unit);
                     measureTypes.push(type);
                     if (type === 9) {
-                        pool.query("INSERT INTO measure_blood (fbuser, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (fbuser, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.fbuser, date, value]);
+                        pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value]);
                     }
                     if (type === 10) {
-                        pool.query("INSERT INTO measure_blood (fbuser, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (fbuser, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.fbuser, date, value]);
+                        pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value]);
                     }
                     if (type === 11) {
-                        pool.query("INSERT INTO measure_blood (fbuser, measure_date, pulse) VALUES ($1, $2, $3) ON CONFLICT (fbuser, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.fbuser, date, value]);
+                        pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value]);
                     }
                     if (type === 1) {
-                        pool.query("INSERT INTO measure_weight (fbuser, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (fbuser, measure_date) DO UPDATE SET weight = excluded.weight", [user.fbuser, date, value]);
+                        pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
                     }
                 });
             })
             if (measureTypes.length > 0) {
-                sendMeasurementMessage(measureTypes, user.fbuser);
+                sendMeasurementMessage(measureTypes, user.client);
                 measureTypes.forEach(type => {
                     let namedType = '';
                     if (type === 9 || type === 10 || type === 11) {
@@ -463,7 +452,7 @@ function getNokiaMeasurements(userid) {
                 })
             }
 
-            pool.query('UPDATE connect_nokia SET last_update = (SELECT NOW()), sent_message = $1 WHERE fbuser = $2 OR nokia_user = $2', [sentTypes.join(), userid]);
+            pool.query('UPDATE connect_nokia SET last_update = (SELECT NOW()), sent_message = $1 WHERE client = $2 OR nokia_user = $2', [sentTypes.join(), userid]);
         });
     });
 }
@@ -475,7 +464,7 @@ function getNokiaMeasurements(userid) {
 function subscribeToNokia(user) {
     let query = { text: 'SELECT * FROM connect_nokia' };
     if (isDefined(user)) {
-        query.text += ' WHERE fbuser = $1';
+        query.text += ' WHERE client = $1';
         query.values = [user];
     }
     pool.query(query).then(res => {
@@ -484,7 +473,7 @@ function subscribeToNokia(user) {
             nokia.subscribe(row.nokia, row.oauth_access_token, row.oauth_access_secret, 4, (error, responseData) => { if (error) console.log(error); });
 
             // Get measurements, so that we have current data and don't have to wait for a new measurement to be made to be up to date
-            getNokiaMeasurements(row.fbuser);
+            getNokiaMeasurements(row.client);
         });
     })
 }
@@ -493,9 +482,9 @@ function subscribeToNokia(user) {
  * Subscribes to all Wunderlist lists.
  */
 function subscribeToWunderlist() {
-    pool.query("SELECT connect_wunderlist.fbuser, connect_wunderlist.access_token, wunderlist_lists.id FROM wunderlist_lists LEFT JOIN connect_wunderlist ON wunderlist_lists.fbuser = connect_wunderlist.fbuser").then(result => {
+    pool.query("SELECT connect_wunderlist.client, connect_wunderlist.access_token, wunderlist_lists.id FROM wunderlist_lists LEFT JOIN connect_wunderlist ON wunderlist_lists.client = connect_wunderlist.client").then(result => {
         result.rows.forEach(row => {
-            wunderlist.createWebhook(row.access_token, row.id, HOSTNAME + 'webhook/wunderlist/' + row.fbuser);
+            wunderlist.createWebhook(row.access_token, row.id, HOSTNAME + 'webhook/wunderlist/' + row.client);
         })
     })
 }
@@ -519,7 +508,8 @@ function isDefined(obj) {
 }
 
 function createNewClient(handle, type) {
-    return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type]).then(res => { console.log(res); return res.rows[0].id });
+    return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type])
+        .then(res => { return res.rows[0].id; });
 }
 
 function getOrRegisterUser(handle, type) {
@@ -555,14 +545,14 @@ app.get('/', function(req, res) {
 });
 
 // Callback URL a user is sent to after logging in to their NOKIA Health account and authorized Paula
-app.get('/connect/nokia/:fbUserId', (req, res) => {
+app.get('/connect/nokia/:clientId', (req, res) => {
     try {
-        let fbUser = req.params.fbUserId;
+        let client = req.params.clientId;
         let userid = req.query.userid;
         let oAuthToken = req.query.oauth_token;
         let oAuthVerifier = req.query.oauth_verifier;
 
-        pool.query("SELECT * FROM connect_nokia WHERE fbuser = $1", [fbUser])
+        pool.query("SELECT * FROM connect_nokia WHERE client = $1", [client])
             .then(result => {
                 let userOAuth = result.rows[0];
                 nokia.getAccessToken(
@@ -579,18 +569,18 @@ app.get('/connect/nokia/:fbUserId', (req, res) => {
                             return;
                         }
 
-                        pool.query('UPDATE connect_nokia SET oauth_access_token = $1, oauth_access_secret = $2, nokia_user = $3, last_update = \'epoch\' WHERE fbuser = $4', [oAuthToken, oAuthTokenSecret, userid, fbUser]).then(() => {
+                        pool.query('UPDATE connect_nokia SET oauth_access_token = $1, oauth_access_secret = $2, nokia_user = $3, last_update = \'epoch\' WHERE client = $4', [oAuthToken, oAuthTokenSecret, userid, client]).then(() => {
                             let request = apiAiService.eventRequest({
                                 name: 'nokia_connected'
                             }, {
-                                sessionId: sessionIds.get(fbUser)
+                                sessionId: sessionIds.get(client)
                             });
 
-                            request.on('response', (response) => { handleResponse(response, fbUser); });
+                            request.on('response', (response) => { handleResponse(response, client); });
                             request.on('error', (error) => console.error(error));
 
                             request.end();
-                            subscribeToNokia(fbUser);
+                            subscribeToNokia(client);
                         });
 
                     });
@@ -608,19 +598,19 @@ app.get('/connect/nokia/:fbUserId', (req, res) => {
 });
 
 // Page a user is sent to by Paula to connect to Wunderlist. Redirects to the wunderlist Login page
-app.get('/connect/wunderlist/:fbUserId', (req, res) => {
-    res.cookie('fbuser', req.params.fbUserId, { maxAge: 1000 * 60 * 15, httpOnly: true })
+app.get('/connect/wunderlist/:clientId', (req, res) => {
+    res.cookie('client', req.params.clientId, { maxAge: 1000 * 60 * 15, httpOnly: true })
         .redirect(wunderlist.getAuthUri());
 });
 
 // Callback URL a user is sent to after logging in to their Wunderlist account and authorized Paula
 app.get('/connect/wunderlist/', (req, res) => {
     try {
-        let user = req.cookies.fbuser;
+        let user = req.cookies.client;
         let code = req.query.code;
         wunderlist.getAccessToken(code, user,
             accessToken => {
-                pool.query('INSERT INTO connect_wunderlist (fbuser, access_token) VALUES ($1, $2) ON CONFLICT (fbuser) DO UPDATE SET access_token = excluded.access_token', [user, accessToken])
+                pool.query('INSERT INTO connect_wunderlist (client, access_token) VALUES ($1, $2) ON CONFLICT (client) DO UPDATE SET access_token = excluded.access_token', [user, accessToken])
                     .then(() => {
                         if (!sessionIds.has(user)) {
                             sessionIds.set(user, uuid.v1());
@@ -698,14 +688,14 @@ app.post('/webhook/', (req, res) => {
 app.post('/webhook/scheduler', (req, res) => {
     // Get last measurements from a user, if their last measurement for that type is longer then a week ago.
     pool.query('SELECT * FROM (' +
-        '(SELECT distinct on (fbuser) measure_blood.fbuser, \'blood\' as measurement_type, measure_date, sent_message FROM measure_blood LEFT JOIN connect_nokia ON measure_blood.fbuser = connect_nokia.fbuser ORDER BY fbuser, measure_date DESC)' +
+        '(SELECT distinct on (client) measure_blood.client, \'blood\' as measurement_type, measure_date, sent_message FROM measure_blood LEFT JOIN connect_nokia ON measure_blood.client = connect_nokia.client ORDER BY client, measure_date DESC)' +
         'UNION ALL ' +
-        '(SELECT distinct on (fbuser) measure_weight.fbuser, \'weight\' as measurement_type, measure_date, sent_message FROM measure_weight LEFT JOIN connect_nokia ON measure_weight.fbuser = connect_nokia.fbuser ORDER BY fbuser, measure_date DESC)' +
+        '(SELECT distinct on (client) measure_weight.client, \'weight\' as measurement_type, measure_date, sent_message FROM measure_weight LEFT JOIN connect_nokia ON measure_weight.client = connect_nokia.client ORDER BY client, measure_date DESC)' +
         ') as latest_records  WHERE measure_date < (CURRENT_DATE - INTERVAL \'1 week\')').then(result => {
         let send = {}
         result.rows.forEach(row => {
             // Define what messages we need to send
-            let user = row.fbuser;
+            let user = row.client;
             let sent = isDefined(row.sent_message) ? row.sent_message.split(',') : [];
             let type = row.measurement_type;
             if (!(user in send)) {
@@ -733,13 +723,13 @@ app.post('/webhook/scheduler', (req, res) => {
                 request.on('error', (error) => console.error(error));
                 request.end();
 
-                pool.query('SELECT sent_message FROM connect_nokia WHERE fbuser = $1', [user]).then(result => {
+                pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
                     let userRecord = result.rows[0];
                     let sentTypes = userRecord.sent_message.split(',');
                     if (!sentTypes.includes(type)) {
                         sentTypes.push(type);
                     }
-                    pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE fbuser = $2', [sentTypes.join(), user]);
+                    pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
                 })
             })
         }
@@ -766,9 +756,9 @@ app.all('/webhook/nokia/:userid/:type', (req, res) => {
 });
 
 // Wunderlist Webhook
-app.all('/webhook/wunderlist/:fbuser', (req, res) => {
+app.all('/webhook/wunderlist/:client', (req, res) => {
     try {
-        let user = req.params.fbuser;
+        let user = req.params.client;
         let body = JSON.parse(req.body);
 
         let operation = body.operation;
