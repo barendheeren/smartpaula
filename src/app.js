@@ -534,7 +534,7 @@ function createNewClient(handle, type) {
                     salesforce.sobject('Account').create({
                         name: profile.first_name + ' ' + profile.last_name,
                         RecordTypeId: '0120Y0000015YRyQAM',
-                        GUID__c: id.substring(0, 16)
+                        GUID__c: id
                     }, function(err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }
                         console.log(err, ret);
@@ -839,26 +839,27 @@ app.post('/webhook/salesforce', (req, res) => {
     let user = body.UID;
     let event = body.Response;
 
-    pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 LIMIT 1", [user]).then(res => {
-        let id = res.rows[0].id;
-        let handle = res.rows[0].handle;
-        let type = res.rows[0].type;
+    pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'FB' LIMIT 1", [user])
+        .then(res => {
+            let id = res.rows[0].id;
+            let handle = res.rows[0].handle;
+            let type = res.rows[0].type;
 
-        if (!sessionIds.has(handle)) {
-            sessionIds.set(handle, uuid.v1());
-        }
+            if (!sessionIds.has(handle)) {
+                sessionIds.set(handle, uuid.v1());
+            }
 
-        let request = apiAiService.eventRequest({
-            name: event,
-        }, {
-            sessionId: sessionIds.get(handle)
+            let request = apiAiService.eventRequest({
+                name: event,
+            }, {
+                sessionId: sessionIds.get(handle)
+            });
+
+            request.on('response', (response) => { handleResponse(response, handle); });
+            request.on('error', (error) => console.error(error));
+
+            request.end();
         });
-
-        request.on('response', (response) => { handleResponse(response, handle); });
-        request.on('error', (error) => console.error(error));
-
-        request.end();
-    });
 });
 
 app.listen(REST_PORT, () => {
