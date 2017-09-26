@@ -526,24 +526,23 @@ function isDefined(obj) {
 }
 
 function createNewClient(handle, type) {
-    return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type])
+    let id = uuid.v4();
+    return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [id, handle, type])
         .then(res => {
             facebook.getProfile(handle, (profile) => {
-                console.log(res, handle, profile);
-                console.log(JSON.stringify(res.rows));
                 salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
                     salesforce.sobject('Account').create({
                         name: profile.first_name + ' ' + profile.last_name,
                         RecordTypeId: '0120Y0000015YRyQAM',
-                        GUID__c: res.rows[0].id
+                        GUID__c: id
                     }, function(err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }
                         console.log(err, ret);
-                        pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [res.rows[0].id, ret.id, 'SF'])
+                        pool.query('INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)', [id, ret.id, 'SF'])
                     });
                 });
             });
-            return res.rows[0].id;
+            return id;
         });
 }
 
