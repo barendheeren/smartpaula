@@ -697,7 +697,7 @@ app.get('/connect/wunderlist/', (req, res) => {
                         request.end();
 
                         res.status(200).send();
-                    }, (err) => { res.status(400).json(err) });
+                    }, (err) => { res.status(400).json(err); });
             });
     } catch (err) {
         return res.status(400).json({
@@ -896,7 +896,10 @@ app.post('/webhook/salesforce', (req, res) => {
 
                     request.end();
                 } else if (isDefined(response) && isDefined(subject)) {
-                    facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '".\n' + response });
+                    facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
+                        () => {
+                            facebook.sendMessage(handle, { response });
+                        });
                 }
             } else {
                 console.error('User does not exist! ', user);
