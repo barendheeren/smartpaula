@@ -55,7 +55,7 @@ const facebook = new Facebook(FB_VERIFY_TOKEN, FB_PAGE_ACCESS_TOKEN);
 /** @const {Vitadock} Vitadock API interface */
 const vitadock = new Vitadock(VITADOCK_API_TOKEN, VITADOCK_API_SECRET);
 
-const salesforce = jsforce.connection();
+const salesforce = new jsforce.Connection();
 
 /** @const {Map} Map of existing API.AI session ID's */
 const sessionIds = new Map();
