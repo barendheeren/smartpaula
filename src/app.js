@@ -80,7 +80,7 @@ function handleResponse(response, sender) {
         /** Additional parameters passed by the intent @type {object} */
         let parameters = response.result.parameters;
 
-        console.log(resolvedQuery);
+        facebook.sendSenderAction(sender, 'typing_on');
 
         getOrRegisterUser(sender, 'FB').then(sender => {
             if (resolvedQuery === '👍') {

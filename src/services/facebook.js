@@ -1,11 +1,11 @@
 const request = require('request');
 
-let Facebook = function (verifyToken, pageAccessToken) {
+let Facebook = function(verifyToken, pageAccessToken) {
     this._verifyToken = verifyToken;
     this._pageAccessToken = pageAccessToken;
 }
 
-Facebook.prototype.sendSenderAction = function (sender, action, callback) {
+Facebook.prototype.sendSenderAction = function(sender, action, callback) {
     setTimeout(() => {
         request({
             url: 'https://graph.facebook.com/v2.6/me/messages',
@@ -35,11 +35,11 @@ Facebook.prototype.sendSenderAction = function (sender, action, callback) {
 /**
  * Subscribe to the facebook message service
  */
-Facebook.prototype.doSubscribeRequest = function () {
+Facebook.prototype.doSubscribeRequest = function() {
     request({
-        method: 'POST',
-        uri: "https://graph.facebook.com/v2.6/me/subscribed_apps?access_token=" + this._pageAccessToken
-    },
+            method: 'POST',
+            uri: "https://graph.facebook.com/v2.6/me/subscribed_apps?access_token=" + this._pageAccessToken
+        },
         (error, response, body) => {
             if (error) {
                 console.error('Error while subscription: ', error);
@@ -55,7 +55,8 @@ Facebook.prototype.doSubscribeRequest = function () {
  * @param {object} messageData Message data to send
  * @param {function} callback Callback function, called when the sending has completed (failed or succeeded)
  */
-Facebook.prototype.sendMessage = function (sender, messageData, callback) {
+Facebook.prototype.sendMessage = function(sender, messageData, callback) {
+    this.sendSenderAction(sender, 'typing_off');
     request({
         url: 'https://graph.facebook.com/v2.6/me/messages',
         qs: {
@@ -86,7 +87,7 @@ Facebook.prototype.sendMessage = function (sender, messageData, callback) {
  * @param {number} facebookId Facebook Id to find user data for
  * @param {function} callback Callback function, called with the user's profile
  */
-Facebook.prototype.getProfile = function (facebookId, callback) {
+Facebook.prototype.getProfile = function(facebookId, callback) {
     request({
         url: 'https://graph.facebook.com/v2.6/' + facebookId,
         qs: {
