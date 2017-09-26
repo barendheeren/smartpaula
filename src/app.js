@@ -81,6 +81,8 @@ function handleResponse(response, sender) {
         let parameters = response.result.parameters;
 
         getOrRegisterUser(sender, 'FB').then(sender => {
+            logAction(sender, intent);
+
             if (isDefined(responseData) && isDefined(responseData.facebook)) {
                 // If the response is specifically a facebook message, send it directly to the user.
                 // (Is this ever used?)
@@ -557,6 +559,10 @@ function getOrRegisterUser(handle, type) {
             return res.rows[0].id;
         }
     });
+}
+
+function logAction(user, intent) {
+    return pool.query("INSERT INTO log (client, intent, time) VALUES ($1, $2, (SELECT NOW()))", [user, intent]);
 }
 
 const app = express();
