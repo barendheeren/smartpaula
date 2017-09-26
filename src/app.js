@@ -239,7 +239,7 @@ function handleResponse(response, sender) {
                                     // Get a reqest token, and a login url to send to the user.
                                     nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
                                         if (!error) {
-                                            pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
+                                            pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
                                                 let fbuser = result.rows[0].handle;
                                                 facebook.sendMessage(fbuser, { text: url });
                                                 console.log(sender, oAuthToken, oAuthTokenSecret);
@@ -286,7 +286,7 @@ function handleResponse(response, sender) {
                 // Send messages asynchronously, to ensure they arrive in the right order 
                 async.eachSeries(splittedText, (textPart, callback) => {
                     message.text = textPart;
-                    pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
+                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
                         let fbuser = result.rows[0].handle;
                         console.log('found user ', fbuser, result.rows[0]);
                         facebook.sendMessage(fbuser, message, callback);
@@ -604,7 +604,7 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                         }
 
                         pool.query('UPDATE connect_nokia SET oauth_access_token = $1, oauth_access_secret = $2, nokia_user = $3, last_update = \'epoch\' WHERE client = $4', [oAuthToken, oAuthTokenSecret, userid, client]).then(() => {
-                            pool.query("SELECT handle FROM clients WHERE id = $1", [client]).then(result => {
+                            pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
                                 let handle = result.rows[0].handle;
 
                                 if (!sessionIds.has(sender)) {
