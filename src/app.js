@@ -77,12 +77,7 @@ function handleResponse(response, sender) {
         /** Additional parameters passed by the intent @type {object} */
         let parameters = response.result.parameters;
 
-        pool.query("SELECT COUNT(*) as count FROM clients WHERE handle = $1", [sender]).then(res => {
-            let count = res.rows[0].count;
-            if (count === '0') {
-                createNewClient(sender, 'FB');
-            }
-        });
+        getOrRegisterUser(sender, 'FB').then(result => console.log('GETORREGISTER', result));
 
         if (isDefined(responseData) && isDefined(responseData.facebook)) {
             // If the response is specifically a facebook message, send it directly to the user.
@@ -457,9 +452,9 @@ function getNokiaMeasurements(userid) {
                 measureTypes.forEach(type => {
                     let namedType = '';
                     if (type === 9 || type === 10 || type === 11) {
-                        namedType = 'blood'
+                        namedType = 'blood';
                     } else if (type === 1) {
-                        namedType = 'weight'
+                        namedType = 'weight';
                     }
                     let index = sentTypes.indexOf(namedType);
                     if (index > -1) {
@@ -475,13 +470,13 @@ function getNokiaMeasurements(userid) {
 
 /**
  * Subscribe to nokia notifications either for a specific user, or for all users at once
- * @param {number|null} fbuser Facebook user id to subscribe to, or null to subscribe to all users
+ * @param {string|null} user User id to subscribe to, or null to subscribe to all users
  */
-function subscribeToNokia(fbuser) {
+function subscribeToNokia(user) {
     let query = { text: 'SELECT * FROM connect_nokia' };
-    if (isDefined(fbuser)) {
+    if (isDefined(user)) {
         query.text += ' WHERE fbuser = $1';
-        query.values = [fbuser];
+        query.values = [user];
     }
     pool.query(query).then(res => {
         res.rows.forEach(row => {
@@ -524,7 +519,17 @@ function isDefined(obj) {
 }
 
 function createNewClient(handle, type) {
-    pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type]);
+    return pool.query("INSERT INTO clients (id, handle, type) VALUES ($1, $2, $3)", [uuid.v4(), handle, type]).then(res => console.log(res));
+}
+
+function getOrRegisterUser(handle, type) {
+    pool.query("SELECT * FROM clients WHERE handle = $1 or id = $1", [sender]).then(res => {
+        if (!res.rows.length) {
+            return createNewClient(sender, 'FB');
+        } else {
+            return res.rows[0].id;
+        }
+    });
 }
 
 const app = express();
@@ -763,7 +768,6 @@ app.all('/webhook/nokia/:userid/:type', (req, res) => {
 // Wunderlist Webhook
 app.all('/webhook/wunderlist/:fbuser', (req, res) => {
     try {
-
         let user = req.params.fbuser;
         let body = JSON.parse(req.body);
 
@@ -775,7 +779,6 @@ app.all('/webhook/wunderlist/:fbuser', (req, res) => {
         let completed_at = body.after.completed_at;
         let completed = body.after.completed;
 
-        console.log(req.body);
         switch (operation) {
             case 'create':
                 pool.query('INSERT INTO wunderlist_items (list, id, item, date_added) VALUES ($1, $2, $3, $4)', [list, id, item, created_at]);
