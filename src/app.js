@@ -870,32 +870,37 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
 app.post('/webhook/salesforce', (req, res) => {
     let body = JSON.parse(req.body);
     let user = body.UID;
-    let event = body.Intent;
+    let intent = body.Intent;
     let response = body.Response;
     let subject = body.Subject;
 
     pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'FB' LIMIT 1", [user])
         .then(res => {
-            let id = res.rows[0].id;
-            let handle = res.rows[0].handle;
-            let type = res.rows[0].type;
+            if (res.rowCount) {
+                let id = res.rows[0].id;
+                let handle = res.rows[0].handle;
+                let type = res.rows[0].type;
 
-            if (!sessionIds.has(handle)) {
-                sessionIds.set(handle, uuid.v1());
-            }
-            if (isDefined(intent)) {
-                let request = apiAiService.eventRequest({
-                    name: event,
-                }, {
-                    sessionId: sessionIds.get(handle)
-                });
+                if (!sessionIds.has(handle)) {
+                    sessionIds.set(handle, uuid.v1());
+                }
+                if (isDefined(intent)) {
+                    let request = apiAiService.eventRequest({
+                        name: intent,
+                    }, {
+                        sessionId: sessionIds.get(handle)
+                    });
 
-                request.on('response', (response) => { handleResponse(response, handle); });
-                request.on('error', (error) => console.error(error));
+                    request.on('response', (response) => { handleResponse(response, handle); });
+                    request.on('error', (error) => console.error(error));
 
-                request.end();
-            } else if (isDefined(response) && isDefined(subject)) {
-                facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '".\n' + response });
+                    request.end();
+                } else if (isDefined(response) && isDefined(subject)) {
+                    facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '".\n' + response });
+                }
+            } else {
+                console.error('User does not exist! ', user);
+                res.status(400).send('User does not exist!');
             }
         });
 });
