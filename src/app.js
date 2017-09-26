@@ -598,7 +598,8 @@ app.use(cookieParser());
 
 var debugtekst = "";
 
-app.use('/static', express.static(path.resolve(__dirname, '../public'))) app.use('/portal', require('./portal'));
+app.use('/static', express.static(path.resolve(__dirname, '../public')));
+app.use('/portal', require('./portal'));
 
 // Server frontpage
 app.get('/', function(req, res) {
