@@ -234,7 +234,6 @@ function handleResponse(response, sender) {
                         let service = response.result.parameters.service;
                         if (isDefined(service)) {
                             switch (service) {
-                                // So far, only Nokia health (formerly Withings) is supported
                                 case "Nokia":
                                     // Get a reqest token, and a login url to send to the user.
                                     nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
@@ -304,15 +303,19 @@ function handleResponse(response, sender) {
                     let vragenlijst_end = payload.vragenlijst_end;
 
                     if (isDefined(followUp)) {
-                        let request = apiAiService.eventRequest({
-                            name: followUp
-                        }, {
-                            sessionId: sessionIds.get(sender)
-                        });
+                        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                            let fbuser = result.rows[0].handle;
 
-                        request.on('response', (response) => { handleResponse(response, sender); });
-                        request.on('error', (error) => console.error(error));
-                        request.end();
+                            let request = apiAiService.eventRequest({
+                                name: followUp
+                            }, {
+                                sessionId: sessionIds.get(fbuser)
+                            });
+
+                            request.on('response', (response) => { handleResponse(response, sender); });
+                            request.on('error', (error) => console.error(error));
+                            request.end();
+                        });
                     }
 
                     if (isDefined(vragenlijst_end) && vragenlijst_end) {
@@ -607,8 +610,8 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                             pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
                                 let handle = result.rows[0].handle;
 
-                                if (!sessionIds.has(sender)) {
-                                    sessionIds.set(sender, uuid.v1());
+                                if (!sessionIds.has(handle)) {
+                                    sessionIds.set(handle, uuid.v1());
                                 }
 
                                 let request = apiAiService.eventRequest({
