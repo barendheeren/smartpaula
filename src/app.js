@@ -145,7 +145,7 @@ function handleResponse(response, sender) {
 
                 // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
                 if (DEFAULT_INTENTS.includes(intent)) {
-                    pool.query('SELECT handle FROM user WHERE id = $1', [sender]).then(result => {
+                    pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
                         let fbuser = result.rows[0].handle;
                         console.log('found user ', fbuser, result.rows[0]);
                         facebook.getProfile(fbuser, (profile) => {
@@ -231,7 +231,7 @@ function handleResponse(response, sender) {
                                     nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
                                         if (!error) {
                                             console.log('Looking up sender ', sender);
-                                            pool.query('SELECT handle FROM user WHERE id = $1', [sender]).then(result => {
+                                            pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
                                                 let fbuser = result.rows[0].handle;
                                                 console.log('found user ', fbuser, result.rows[0]);
                                                 facebook.sendMessage(fbuser, { text: url });
@@ -278,7 +278,7 @@ function handleResponse(response, sender) {
                 // Send messages asynchronously, to ensure they arrive in the right order 
                 async.eachSeries(splittedText, (textPart, callback) => {
                     message.text = textPart;
-                    pool.query('SELECT handle FROM user WHERE id = $1', [sender]).then(result => {
+                    pool.query('SELECT handle FROM clients WHERE id = $1', [sender]).then(result => {
                         let fbuser = result.rows[0].handle;
                         console.log('found user ', fbuser, result.rows[0]);
                         facebook.sendMessage(fbuser, message, callback);
