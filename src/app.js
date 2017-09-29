@@ -221,9 +221,9 @@ function handleResponse(response, sender) {
                         }
 
                         response.result.fulfillment.messages.forEach(function (message) {
-                            let payload = message.payload;
-                            if (isDefined(payload) && isDefined(payload.question)) {
-                                message.quick_replies = sf12Answers[payload.question];
+                            let messagePayload = message.payload;
+                            if (isDefined(messagePayload) && isDefined(messagePayload.question)) {
+                                message.quick_replies = sf12Answers[messagePayload.question];
                             }
                         });
                         break;
