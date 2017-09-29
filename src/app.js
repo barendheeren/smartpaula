@@ -204,17 +204,17 @@ function handleResponse(response, sender) {
                         break;
 
                     case "sf12-sum":                            
-                        let score = parameters.pam_score;
+                        let sf12Score = parameters.sf12_score;
 
-                        if (typeof score !== 'undefined') {
-                            score = score || 0;
+                        if (typeof sf12Score  !== 'undefined') {
+                            sf12Score = sf12Score  || 0;
                             pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
                                 .then(res => {
                                     let vragenlijst = res.rows[0].id;
                                     pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
                                         .then(res => {
                                             let answer_no = res.rowCount + 1;
-                                            pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, score, answer_no]);
+                                            pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, sf12Score, answer_no]);
                                         });
                                 });
                         }
