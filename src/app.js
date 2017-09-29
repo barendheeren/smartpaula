@@ -219,12 +219,8 @@ function handleResponse(response, sender) {
                                 });
                         }
 
-                        response.result.fulfillment.messages.forEach(function (message) {
-                            let messagePayload = message.payload;
-                            if (isDefined(messagePayload) && isDefined(messagePayload.question)) {
-                                message.quick_replies = sf12Answers[messagePayload.question];
-                            }
-                        });
+
+                        message.quick_replies = sf12Answers[params.question];
                         break;
 
                         // User wants to start a new questionnare
