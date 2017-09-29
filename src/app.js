@@ -203,7 +203,7 @@ function handleResponse(response, sender) {
                         });
                         break;
 
-                    case "sf12-sum":                            
+                    case "sf12_sum":                            
                         let sf12Score = parameters.sf12_score;
 
                         if (typeof sf12Score  !== 'undefined') {
