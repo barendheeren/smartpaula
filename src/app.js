@@ -307,8 +307,7 @@ function handleResponse(response, sender) {
 
                 // facebook API limit for text length is 640,
                 // so we must split message if needed
-                let splittedText = splitResponse(message.text);
-                console.log(message);
+                let splittedText = splitResponse(message.text);               
                 // Send messages asynchronously, to ensure they arrive in the right order 
                 async.eachSeries(splittedText, (textPart, callback) => {
                     message.text = textPart;
