@@ -203,8 +203,7 @@ function handleResponse(response, sender) {
                         });
                         break;
 
-                    case "sf12-sum":
-                        let payload = response.result.payload;
+                    case "sf12-sum":                            \
                         let score = parameters.pam_score;
 
                         if (typeof score !== 'undefined') {
