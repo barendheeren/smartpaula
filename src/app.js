@@ -18,6 +18,8 @@ const Facebook = require('./services/facebook');
 const Nokia = require('./services/nokia');
 const Vitadock = require('./services/vitadock');
 
+const sf12Answers = require('./data/sf12-answers');
+
 const REST_PORT = (process.env.PORT || 5000);
 const APIAI_ACCESS_TOKEN = process.env.APIAI_ACCESS_TOKEN;
 const APIAI_LANG = process.env.APIAI_LANG || 'nl';
@@ -202,6 +204,28 @@ function handleResponse(response, sender) {
                         break;
 
                     case "sf12-sum":
+                        let payload = response.result.payload;
+                        let score = parameters.pam_score;
+
+                        if (typeof score !== 'undefined') {
+                            score = score || 0;
+                            pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
+                                .then(res => {
+                                    let vragenlijst = res.rows[0].id;
+                                    pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
+                                        .then(res => {
+                                            let answer_no = res.rowCount + 1;
+                                            pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, score, answer_no]);
+                                        });
+                                });
+                        }
+
+                        response.result.fulfillment.messages.forEach(function (message) {
+                            let payload = message.payload;
+                            if (isDefined(payload) && isDefined(payload.question)) {
+                                message.quick_replies = sf12Answers[payload.question];
+                            }
+                        });
                         break;
 
                         // User wants to start a new questionnare
