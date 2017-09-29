@@ -220,7 +220,7 @@ function handleResponse(response, sender) {
                         }
 
 
-                        message.quick_replies = sf12Answers[params.question];
+                        message.quick_replies = sf12Answers[parameters.question];
                         break;
 
                         // User wants to start a new questionnare
