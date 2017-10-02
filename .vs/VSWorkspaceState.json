@@ -5,6 +5,7 @@
     "\\public",
     "\\public\\js",
     "\\src",
+    "\\src\\data",
     "\\src\\services",
     "\\views"
   ],

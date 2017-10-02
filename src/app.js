@@ -205,11 +205,12 @@ function handleResponse(response, sender) {
 
                     case "SF12_sum":
                         let sf12Score = parameters.sf12_score;
-
+                        console.log('score', sf12Score);
                         if (typeof sf12Score !== 'undefined') {
                             sf12Score = sf12Score || 0;
                             pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
                                 .then(res => {
+                                    console.log('LIST', res);
                                     if (res.rowCount) {
                                         let vragenlijst = res.rows[0].id;
                                         pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
