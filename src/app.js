@@ -159,18 +159,16 @@ function handleResponse(response, sender) {
                 if (DEFAULT_INTENTS.includes(intent)) {
                     pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                         let handle = result.rows[0].handle;
-                        salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
-                            salesforce.sobject('Case')
-                                .create({
-                                    AccountId: handle,
-                                    Status: 'New',
-                                    Origin: 'Smart Susan',
-                                    Subject: resolvedQuery,
-                                },
-                                function (err, ret) {
-                                    if (err || !ret.success) { return console.error(err, ret); }
-                                });
-                        });
+                        salesforce.sobject('Case')
+                            .create({
+                                AccountId: handle,
+                                Status: 'New',
+                                Origin: 'Smart Susan',
+                                Subject: resolvedQuery,
+                            },
+                            function (err, ret) {
+                                if (err || !ret.success) { return console.error(err, ret); }
+                            });
                     });
                 }
 
@@ -308,7 +306,7 @@ function handleResponse(response, sender) {
 
                 // facebook API limit for text length is 640,
                 // so we must split message if needed
-                let splittedText = splitResponse(message.text);               
+                let splittedText = splitResponse(message.text);
                 // Send messages asynchronously, to ensure they arrive in the right order 
                 async.eachSeries(splittedText, (textPart, callback) => {
                     message.text = textPart;
@@ -484,17 +482,15 @@ function getNokiaMeasurements(userid) {
                             }
                             if (type === 1) {
                                 pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
-                                salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
-                                    salesforce.sobject('Weight_Measurements__c')
-                                        .create({
-                                            Account__c: client.handle,
-                                            Date_Time_Measurement__c: Date(date).toISOString,
-                                            Value__c: value
-                                        },
-                                        function (err, ret) {
-                                            if (err || !ret.success) { return console.error(err, ret); }
-                                        });
-                                })
+                                salesforce.sobject('Weight_Measurements__c')
+                                    .create({
+                                        Account__c: client.handle,
+                                        Date_Time_Measurement__c: Date(date).toISOString,
+                                        Value__c: value
+                                    },
+                                    function (err, ret) {
+                                        if (err || !ret.success) { return console.error(err, ret); }
+                                    });
                             }
                         }
                     });
@@ -576,15 +572,13 @@ function createNewClient(handle, type) {
     return pool.query("INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))", [id, handle, type])
         .then(res => {
             facebook.getProfile(handle, (profile) => {
-                salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', () => {
-                    salesforce.sobject('Account').create({
-                        name: profile.first_name + ' ' + profile.last_name,
-                        RecordTypeId: '0120Y0000015YRyQAM',
-                        GUID__c: id
-                    }, function (err, ret) {
-                        if (err || !ret.success) { return console.error(err, ret); }
-                        pool.query('INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))', [id, ret.id, 'SF'])
-                    });
+                salesforce.sobject('Account').create({
+                    name: profile.first_name + ' ' + profile.last_name,
+                    RecordTypeId: '0120Y0000015YRyQAM',
+                    GUID__c: id
+                }, function (err, ret) {
+                    if (err || !ret.success) { return console.error(err, ret); }
+                    pool.query('INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))', [id, ret.id, 'SF'])
                 });
             });
             return id;
@@ -607,6 +601,15 @@ function logAction(user, intent) {
 
 const app = express();
 const frontofficeid = 1533050426761050;
+
+salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', (err, userInfo) => {
+    if (err) { return console.error(err); }
+    console.log(userInfo);
+    salesforce = jsforce.Connection({
+        instanceUrl: conn.instanceUrl,
+        accessToken: conn.accessToken
+    })
+});
 
 app.use(bodyParser.text({
     type: 'application/json'
