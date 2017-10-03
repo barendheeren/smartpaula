@@ -606,8 +606,8 @@ salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', (err, userInfo) 
     if (err) { return console.error(err); }
     console.log(userInfo);
     salesforce = jsforce.Connection({
-        instanceUrl: conn.instanceUrl,
-        accessToken: conn.accessToken
+        instanceUrl: salesforce.instanceUrl,
+        accessToken: salesforce.accessToken
     })
 });
 
