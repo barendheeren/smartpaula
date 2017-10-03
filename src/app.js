@@ -470,22 +470,22 @@ function getNokiaMeasurements(userid) {
                     pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'SF'", [user.client]).then(clientRes => {
                         if (clientRes.rowCount) {
                             let client = clientRes.rows[0];
-                            measureTypes.push(type);
-
+                            measureTypes.push(type);      
                             if (user && date && value) {
+                                console.log('MEASUREMENT', type, user, date, value)
                                 if (type === 9) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value], res => {
-                                        console.log(res);
+                                        console.log('RESULT', res);
                                     });
                                 }
                                 if (type === 10) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value], res => {
-                                        console.log(res);
+                                        console.log('RESULT', res);
                                     });
                                 }
                                 if (type === 11) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2 $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value], res => {
-                                        console.log(res);
+                                        console.log('RESULT', res);
                                     });
                                 }
                                 if (type === 1) {
