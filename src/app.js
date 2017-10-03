@@ -471,6 +471,7 @@ function getNokiaMeasurements(userid) {
                         if (clientRes.rowCount) {
                             let client = clientRes.rows[0];
                             measureTypes.push(type);
+
                             if (user && date && value) {
                                 if (type === 9) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value], res => {
