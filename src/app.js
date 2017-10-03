@@ -471,33 +471,34 @@ function getNokiaMeasurements(userid) {
                         if (clientRes.rowCount) {
                             let client = clientRes.rows[0];
                             measureTypes.push(type);
-                            console.log(user, date, value);
-                            if (type === 9) {
-                                pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value], res => {
-                                    console.log(res);
-                                });
-                            }
-                            if (type === 10) {
-                                pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value], res => {
-                                    console.log(res);
-                                });
-                            }
-                            if (type === 11) {
-                                pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2 $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value], res => {
-                                    console.log(res);
-                                });
-                            }
-                            if (type === 1) {
-                                pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
-                                salesforce.sobject('Weight_Measurements__c')
-                                    .create({
-                                        Account__c: client.handle,
-                                        Date_Time_Measurement__c: Date(date).toISOString,
-                                        Value__c: value
-                                    },
-                                    function (err, ret) {
-                                        if (err || !ret.success) { return console.error(err, ret); }
+                            if (user && date && value) {
+                                if (type === 9) {
+                                    pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value], res => {
+                                        console.log(res);
                                     });
+                                }
+                                if (type === 10) {
+                                    pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value], res => {
+                                        console.log(res);
+                                    });
+                                }
+                                if (type === 11) {
+                                    pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2 $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value], res => {
+                                        console.log(res);
+                                    });
+                                }
+                                if (type === 1) {
+                                    pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
+                                    salesforce.sobject('Weight_Measurements__c')
+                                        .create({
+                                            Account__c: client.handle,
+                                            Date_Time_Measurement__c: Date(date).toISOString,
+                                            Value__c: value
+                                        },
+                                        function (err, ret) {
+                                            if (err || !ret.success) { return console.error(err, ret); }
+                                        });
+                                }
                             }
                         }
                     });
