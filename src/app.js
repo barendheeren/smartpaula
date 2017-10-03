@@ -604,11 +604,6 @@ const frontofficeid = 1533050426761050;
 
 salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', (err, userInfo) => {
     if (err) { return console.error(err); }
-    console.log(userInfo);
-    salesforce = jsforce.Connection({
-        instanceUrl: salesforce.instanceUrl,
-        accessToken: salesforce.accessToken
-    })
 });
 
 app.use(bodyParser.text({
