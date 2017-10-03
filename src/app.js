@@ -609,10 +609,6 @@ function logAction(user, intent) {
 const app = express();
 const frontofficeid = 1533050426761050;
 
-salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', (err, userInfo) => {
-    if (err) { return console.error(err); }
-});
-
 app.use(bodyParser.text({
     type: 'application/json'
 })); //geen response als deze weggelaten wordt
@@ -938,9 +934,13 @@ app.listen(REST_PORT, () => {
     console.log('Rest service ready on port ' + REST_PORT);
 });
 
-// Subscribe to the facebook API
-facebook.doSubscribeRequest();
-// Subscribe to all Nokia Users
-subscribeToNokia();
-//Subscribe to all Wunderlist lists
-subscribeToWunderlist();
+
+salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', (err, userInfo) => {
+    if (err) { return console.error(err); }
+    // Subscribe to the facebook API
+    facebook.doSubscribeRequest();
+    // Subscribe to all Nokia Users
+    subscribeToNokia();
+    //Subscribe to all Wunderlist lists
+    subscribeToWunderlist();
+});
