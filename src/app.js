@@ -85,10 +85,12 @@ function handleResponse(response, sender) {
         facebook.sendSenderAction(sender, 'typing_on');
 
         getOrRegisterUser(sender, 'FB').then(sender => {
-            if (resolvedQuery === '👍') {
-
+            if (resolvedQuery === '👍' || resolvedQuery === '👎') {
+                let feedback = resolvedQuery === '👍' ? '+' : '-';
+                pool.query('UPDATE log SET feedback = $1 WHERE client = $2 AND (select max(date_time_column) FROM log WHERE client = $1)');
+            } else {
+                logAction(sender, intent);
             }
-            logAction(sender, intent);
 
             if (isDefined(responseData) && isDefined(responseData.facebook)) {
                 // If the response is specifically a facebook message, send it directly to the user.
@@ -1005,4 +1007,4 @@ salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', (err, userInfo) 
     subscribeToNokia();
     //Subscribe to all Wunderlist lists
     subscribeToWunderlist();
-});
+});             
