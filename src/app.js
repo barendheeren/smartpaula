@@ -87,7 +87,7 @@ function handleResponse(response, sender) {
         getOrRegisterUser(sender, 'FB').then(sender => {
             if (resolvedQuery === '👍' || resolvedQuery === '👎') {
                 let feedback = resolvedQuery === '👍' ? '+' : '-';
-                pool.query('UPDATE log SET feedback = $1 WHERE client = $2 AND (select max(date_time_column) FROM log WHERE client = $1)');
+                pool.query('UPDATE log SET feedback = $1 WHERE client = $2 AND (select max(date_time_column) FROM log WHERE client = $1)', [feedback, sender]);
             } else {
                 logAction(sender, intent);
             }
