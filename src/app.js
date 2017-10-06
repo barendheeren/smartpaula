@@ -475,7 +475,7 @@ function getNokiaMeasurements(userid) {
                                 console.log('MEASUREMENT', type, user, date, value)
                                 if (type === 9) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value]).then(res => {
-                                        if (res.rows[0].salesforce_id) {
+                                        if (res.rowCount && res.rows[0].salesforce_id) {
                                             salesforce.sobject('Blood_Pressure_measurement__c')
                                                 .update({
                                                     id: res.rows[0].salesforce_id,
@@ -500,7 +500,7 @@ function getNokiaMeasurements(userid) {
                                 }
                                 if (type === 10) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value]).then(res => {
-                                        if (res.rows[0].salesforce_id) {
+                                        if (res.rowCount && res.rows[0].salesforce_id) {
                                             salesforce.sobject('Blood_Pressure_measurement__c')
                                                 .update({
                                                     id: res.rows[0].salesforce_id,
@@ -525,7 +525,7 @@ function getNokiaMeasurements(userid) {
                                 }
                                 if (type === 11) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2 $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value]).then(res => {
-                                        if (res.rows[0].salesforce_id) {
+                                        if (res.rowCount && res.rows[0].salesforce_id) {
                                             salesforce.sobject('Blood_Pressure_measurement__c')
                                                 .update({
                                                     id: res.rows[0].salesforce_id,
