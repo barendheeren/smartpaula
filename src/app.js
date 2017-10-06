@@ -474,18 +474,78 @@ function getNokiaMeasurements(userid) {
                             if (user && date && value) {
                                 console.log('MEASUREMENT', type, user, date, value)
                                 if (type === 9) {
-                                    pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value], res => {
-                                        console.log('RESULT', res);
+                                    pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value]).then(res => {
+                                        if (res.rows[0].salesforce_id) {
+                                            salesforce.sobject('Blood_Pressure_measurement__c')
+                                                .update({
+                                                    id: res.rows[0].salesforce_id,
+                                                    Diastole_Blood_Pressure__c: value,
+                                                    Date_Time_Measurement__c: Date(date).toISOString()
+                                                }, function (err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                });
+                                        } else {
+                                            salesforce.sobject('Blood_Pressure_measurement__c')
+                                                .create({
+                                                    Diastole_Blood_Pressure__c: value,
+                                                    Date_Time_Measurement__c: Date(date).toISOString()
+                                                }, function (err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                    else {
+                                                        pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
+                                                    }
+                                                });
+                                        }
                                     });
                                 }
                                 if (type === 10) {
-                                    pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value], res => {
-                                        console.log('RESULT', res);
+                                    pool.query("INSERT INTO measure_blood (client, measure_date, systolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET systolic = excluded.systolic", [user.client, date, value]).then(res => {
+                                        if (res.rows[0].salesforce_id) {
+                                            salesforce.sobject('Blood_Pressure_measurement__c')
+                                                .update({
+                                                    id: res.rows[0].salesforce_id,
+                                                    Systole_Blood_Pressure__c: value,
+                                                    Date_Time_Measurement__c: Date(date).toISOString()
+                                                }, function (err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                });
+                                        } else {
+                                            salesforce.sobject('Blood_Pressure_measurement__c')
+                                                .create({
+                                                    Systole_Blood_Pressure__c: value,
+                                                    Date_Time_Measurement__c: Date(date).toISOString()
+                                                }, function (err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                    else {
+                                                        pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
+                                                    }
+                                                });
+                                        }
                                     });
                                 }
                                 if (type === 11) {
-                                    pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2 $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value], res => {
-                                        console.log('RESULT', res);
+                                    pool.query("INSERT INTO measure_blood (client, measure_date, pulse) VALUES ($1, $2 $3) ON CONFLICT (client, measure_date) DO UPDATE SET pulse = excluded.pulse", [user.client, date, value]).then(res => {
+                                        if (res.rows[0].salesforce_id) {
+                                            salesforce.sobject('Blood_Pressure_measurement__c')
+                                                .update({
+                                                    id: res.rows[0].salesforce_id,
+                                                    Heartbeat__c: value,
+                                                    Date_Time_Measurement__c: Date(date).toISOString()
+                                                }, function (err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                });
+                                        } else {
+                                            salesforce.sobject('Blood_Pressure_measurement__c')
+                                                .create({
+                                                    Diastole_Blood_Pressure__c: value,
+                                                    Heartbeat__c: Date(date).toISOString()
+                                                }, function (err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                    else {
+                                                        pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
+                                                    }
+                                                });
+                                        }
                                     });
                                 }
                                 if (type === 1) {
