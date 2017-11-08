@@ -86,7 +86,7 @@ function handleResponse(response, sender) {
 
         getOrRegisterUser(sender, 'FB').then(sender => {
             if (parameters.feedback) {
-                let feedback = parameters.feedback === '👍' ? '+' : '-'; 
+                let feedback = parameters.feedback === '👍' ? '+' : '-';
                 pool.query('UPDATE log SET feedback = $1 WHERE client = $2 AND time = (select max(time) FROM log WHERE client = $2)', [feedback, sender]);
             } else {
                 logAction(sender, intent);
@@ -282,6 +282,9 @@ function handleResponse(response, sender) {
                                     break;
                             }
                         }
+                        break;
+                    case "RecipeNameForLink":
+                        console.log(parameters);
                         break;
                     case "my_facebook_id":
                         message.text += '\n' + sender;
@@ -483,7 +486,7 @@ function getNokiaMeasurements(userid) {
                                                     id: res.rows[0].salesforce_id,
                                                     Diastole_Blood_Pressure__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
-                                                }, function (err, ret) {
+                                                }, function(err, ret) {
                                                     if (err || !ret.success) { return console.error(err, ret); }
                                                 });
                                         } else {
@@ -491,9 +494,8 @@ function getNokiaMeasurements(userid) {
                                                 .create({
                                                     Diastole_Blood_Pressure__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
-                                                }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); }
-                                                    else {
+                                                }, function(err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); } else {
                                                         pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
                                                     }
                                                 });
@@ -508,7 +510,7 @@ function getNokiaMeasurements(userid) {
                                                     id: res.rows[0].salesforce_id,
                                                     Systole_Blood_Pressure__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
-                                                }, function (err, ret) {
+                                                }, function(err, ret) {
                                                     if (err || !ret.success) { return console.error(err, ret); }
                                                 });
                                         } else {
@@ -516,9 +518,8 @@ function getNokiaMeasurements(userid) {
                                                 .create({
                                                     Systole_Blood_Pressure__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
-                                                }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); }
-                                                    else {
+                                                }, function(err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); } else {
                                                         pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
                                                     }
                                                 });
@@ -533,7 +534,7 @@ function getNokiaMeasurements(userid) {
                                                     id: res.rows[0].salesforce_id,
                                                     Heartbeat__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
-                                                }, function (err, ret) {
+                                                }, function(err, ret) {
                                                     if (err || !ret.success) { return console.error(err, ret); }
                                                 });
                                         } else {
@@ -541,9 +542,8 @@ function getNokiaMeasurements(userid) {
                                                 .create({
                                                     Diastole_Blood_Pressure__c: value,
                                                     Heartbeat__c: Date(date).toISOString()
-                                                }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); }
-                                                    else {
+                                                }, function(err, ret) {
+                                                    if (err || !ret.success) { return console.error(err, ret); } else {
                                                         pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
                                                     }
                                                 });
@@ -1007,4 +1007,4 @@ salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', (err, userInfo) 
     subscribeToNokia();
     //Subscribe to all Wunderlist lists
     subscribeToWunderlist();
-});             
+});
