@@ -292,6 +292,7 @@ function handleResponse(response, sender) {
                                 let recipe = result.rows[0];
                                 pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
                                     let fbuser = result.rows[0].handle;
+                                    console.log(sender, fbuser)
                                     let request = apiAiService.eventRequest({
                                         name: 'RECIPE'
                                     }, {
