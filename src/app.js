@@ -1030,41 +1030,48 @@ app.post('/webhook/salesforce', (req, res) => {
     let response = body.Response;
     let subject = body.Subject;
 
-    pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'SF' LIMIT 1", [user])
-        .then(res => {
-            if (res.rowCount) {
-                pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' LIMIT 1", [res.rows[0].id]).then(res => {
-                    let id = res.rows[0].id;
-                    let handle = res.rows[0].handle;
-                    let type = res.rows[0].type;
+    if (isDefined(user)) {
+        pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'SF' LIMIT 1", [user])
+            .then(res => {
+                if (res.rowCount) {
+                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' LIMIT 1", [res.rows[0].id]).then(res => {
+                        let id = res.rows[0].id;
+                        let handle = res.rows[0].handle;
+                        let type = res.rows[0].type;
 
-                    if (!sessionIds.has(handle)) {
-                        sessionIds.set(handle, uuid.v1());
-                    }
-                    if (isDefined(intent)) {
-                        let request = apiAiService.eventRequest({
-                            name: intent,
-                        }, {
-                                sessionId: sessionIds.get(handle)
-                            });
+                        if (!sessionIds.has(handle)) {
+                            sessionIds.set(handle, uuid.v1());
+                        }
+                        if (isDefined(intent)) {
+                            let request = apiAiService.eventRequest({
+                                name: intent,
+                            }, {
+                                    sessionId: sessionIds.get(handle)
+                                });
 
-                        request.on('response', (response) => { handleResponse(response, handle); });
-                        request.on('error', (error) => console.error(error));
+                            request.on('response', (response) => { handleResponse(response, handle); });
+                            request.on('error', (error) => console.error(error));
 
-                        request.end();
-                    } else if (isDefined(response) && isDefined(subject)) {
-                        facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
-                            () => {
-                                facebook.sendMessage(handle, { text: response });
-                            });
-                    }
+                            request.end();
+                            res.status(200).send
+                        } else if (isDefined(response) && isDefined(subject)) {
+                            facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
+                                () => {
+                                    facebook.sendMessage(handle, { text: response });
+                                    res.status(200).send
+                                });
+                        }
 
-                });
-            } else {
-                console.error('User does not exist! ', user);
-                res.status(400).send('User does not exist!');
-            }
-        });
+                    });
+                } else {
+                    console.error('User does not exist! ', user);
+                    res.status(400).send('User does not exist!');
+                }
+            });
+    } else {
+        console.error('No user Defined ', user);
+        res.status(400).send('User does not exist!');
+    }
 });
 
 app.listen(REST_PORT, () => {
