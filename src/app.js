@@ -1060,6 +1060,9 @@ app.post('/webhook/salesforce', (req, res) => {
                                     facebook.sendMessage(handle, { text: response });
                                     res.status(200).send
                                 });
+                        } else {
+                            console.error('Nothing given to respond...', user);
+                            res.status(400).send('Nothing to respond...');
                         }
 
                     });
@@ -1070,7 +1073,7 @@ app.post('/webhook/salesforce', (req, res) => {
             });
     } else {
         console.error('No user Defined ', user);
-        res.status(400).send('User does not exist!');
+        res.status(400).send('No user given');
     }
 });
 
