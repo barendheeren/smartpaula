@@ -310,6 +310,24 @@ function handleResponse(response, sender) {
                             });
                         }
                         break;
+                    case 'RecipeNameForLink.RecipeNameForLink-automatic.RecipeNameForLink-automatic-yes.RecipeNameForLink-automatic-yes-selectnumber':
+                        let number = parameters.number;
+                        pool.query("SELECT * FROM connect_wunderlist WHERE client = $1", [sender]).then(result => {
+                            let connection = result.rows[0];
+                            if (isDefined(connection)) {
+                                pool.query('SELECT id from wunderlist_lists WHERE client = $1', [sender]).then(result => {
+                                    if (result.rowCount) {
+                                        addRecipeToList(result.rows[0].id, connection.access_token, recipeState[sender], number)
+                                    } else {
+                                        wunderlist.createList(connection.access_token).done(list => {
+                                            pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
+                                            addRecipeToList(list.id, connection.access_token, recipeState[sender], number);
+                                        });
+                                    }
+                                })
+                            }
+                        });
+                        break;
                     case "my_facebook_id":
                         message.text += '\n' + sender;
                         break;
@@ -699,6 +717,25 @@ function getOrRegisterUser(handle, type) {
 
 function logAction(user, intent) {
     return pool.query("INSERT INTO log (client, intent, time) VALUES ($1, $2, (SELECT NOW()))", [user, intent]);
+}
+
+function addRecipeToList(list, accessToken, recipe, number) {
+    pool.query('SELECT * FROM ingredients WHERE recipe = $1', [recipe]).then(result => {
+        result.rows.forEach(row => {
+            let item = "";
+            if (row.amount) {
+                item += (row.amount * number).toString();
+                if (row.unit) {
+                    item += row.unit;
+                }
+            }
+            item += row.name
+
+            console.log(item);
+                    
+            wunderlist.createTask(list, accessToken, item);
+        });
+    });
 }
 
 const app = express();
