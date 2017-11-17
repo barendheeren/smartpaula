@@ -1058,8 +1058,8 @@ app.post('/webhook/salesforce', (req, res) => {
                             facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
                                 () => {
                                     facebook.sendMessage(handle, { text: response });
-                                    result.status(200).send
                                 });
+                            res.sendStatus(200);
                         } else {
                             console.error('Nothing given to respond...');
                             res.status(400).send('Nothing to respond...');
