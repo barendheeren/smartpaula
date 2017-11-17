@@ -285,16 +285,15 @@ function handleResponse(response, sender) {
                             }
                         }
                         break;
-                    case "RecipeNameForLink":
-                        console.log(parameters);
+                    case "RecipeNameForLink":  
                         if (parameters.RecipeNameToRecipeLink) {
                             pool.query('SELECT id, url, duration FROM recipes WHERE name = $1 LIMIT 1', [parameters.RecipeNameToRecipeLink]).then(result => {
-                                recipeState[sender] = res.rows[0].id
+                                recipeState[sender] = result.rows[0].id
                                 let request = apiAiService.eventRequest({
                                     name: 'RECIPE'
                                 }, {
-                                        url: res.rows[0].url,
-                                        duration: res.rows[0].duration
+                                        url: result.rows[0].url,
+                                        duration: result.rows[0].duration
                                     });
 
                                 request.on('response', (response) => { handleResponse(response, sender); });
