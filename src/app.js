@@ -84,7 +84,7 @@ function handleResponse(response, sender) {
         /** Additional parameters passed by the intent @type {object} */
         let parameters = response.result.parameters;
 
-        facebook.sendSenderAction(sender, 'typing_on');
+        facebook.sendSenderAction(sender, 'typing_on');           
 
         getOrRegisterUser(sender, 'FB').then(sender => {
             if (parameters.feedback) {
@@ -300,7 +300,7 @@ function handleResponse(response, sender) {
                                             duration: recipe.duration
                                         });
 
-                                    request.on('response', (response) => { handleResponse(response, sender); });
+                                    request.on('response', (response) => { handleResponse(response, fbuser); });
                                     request.on('error', (error) => console.error(error));
                                     request.end();
                                 });
