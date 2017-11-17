@@ -62,6 +62,8 @@ const salesforce = new jsforce.Connection();
 /** @const {Map} Map of existing API.AI session ID's */
 const sessionIds = new Map();
 
+let recipeState = {};
+
 /**
  * Handles an API.AI message, and responds accordingly to the Facebook user.
  * Handling includes e.g. database operations that should occur as a result of a previous message.
@@ -285,6 +287,21 @@ function handleResponse(response, sender) {
                         break;
                     case "RecipeNameForLink":
                         console.log(parameters);
+                        if (parameters.RecipeNameToRecipeLink) {
+                            pool.query('SELECT id, url, duration FROM recipes WHERE name = $1 LIMIT 1', [parameters.RecipeNameToRecipeLink]).then(result => {
+                                recipeState[sender] = res.rows[0].id
+                                let request = apiAiService.eventRequest({
+                                    name: 'RECIPE'
+                                }, {
+                                        url: res.rows[0].url,
+                                        duration: res.rows[0].duration
+                                    });
+
+                                request.on('response', (response) => { handleResponse(response, sender); });
+                                request.on('error', (error) => console.error(error));
+                                request.end();
+                            });
+                        }
                         break;
                     case "my_facebook_id":
                         message.text += '\n' + sender;
