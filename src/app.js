@@ -293,6 +293,8 @@ function handleResponse(response, sender) {
                         console.warn('Received an unknown action from API.ai: "' + action + '"');
                 }
 
+                console.log(action);
+
                 if (intentName === "Connected Wunderlist") {
                     message.quick_replies = [{
                             "content_type": "text",
