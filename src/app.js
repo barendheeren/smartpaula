@@ -287,12 +287,11 @@ function handleResponse(response, sender) {
                         break;
                     case "RecipeNameForLink":  
                         if (parameters.RecipeNameToRecipeLink) {
-                            pool.query('SELECT id, url, duration FROM recipes WHERE name = $1 LIMIT 1', [parameters.RecipeNameToRecipeLink]).then(result => {
+                            pool.query('SELECT id, url, duration FROM recipes WHERE name = $1 LIMIT 1', [parameters.RecipeNameToRecipeLink.toLowerCase()]).then(result => {
                                 recipeState[sender] = result.rows[0].id
                                 let recipe = result.rows[0];
                                 pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
                                     let fbuser = result.rows[0].handle;
-                                    console.log(sender, fbuser)
                                     let request = apiAiService.eventRequest({
                                         name: 'RECIPE'
                                     }, {
@@ -316,6 +315,7 @@ function handleResponse(response, sender) {
                 }
 
                 console.log(action);
+                console.log(sender, fbuser)
 
                 if (intentName === "Connected Wunderlist") {
                     message.quick_replies = [{
