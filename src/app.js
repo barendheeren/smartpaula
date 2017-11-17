@@ -293,11 +293,14 @@ function handleResponse(response, sender) {
                                 pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
                                     let fbuser = result.rows[0].handle;
                                     let request = apiAiService.eventRequest({
-                                        name: 'RECIPE'
-                                    }, {
-                                            sessionId: sessionIds.get(fbuser),
+                                        name: 'RECIPE',
+                                        data: {
                                             url: recipe.url,
                                             duration: recipe.duration
+                                        }
+                                    }, {
+                                            sessionId: sessionIds.get(fbuser),
+
                                         });
 
                                     request.on('response', (response) => { handleResponse(response, fbuser); });
