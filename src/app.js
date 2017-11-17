@@ -289,16 +289,21 @@ function handleResponse(response, sender) {
                         if (parameters.RecipeNameToRecipeLink) {
                             pool.query('SELECT id, url, duration FROM recipes WHERE name = $1 LIMIT 1', [parameters.RecipeNameToRecipeLink]).then(result => {
                                 recipeState[sender] = result.rows[0].id
-                                let request = apiAiService.eventRequest({
-                                    name: 'RECIPE'
-                                }, {
-                                        url: result.rows[0].url,
-                                        duration: result.rows[0].duration
-                                    });
+                                let recipe = result.rows[0];
+                                pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                                    let fbuser = result.rows[0].handle;
+                                    let request = apiAiService.eventRequest({
+                                        name: 'RECIPE'
+                                    }, {
+                                            sessionId: sessionIds.get(fbuser),
+                                            url: recipe.url,
+                                            duration: recipe.duration
+                                        });
 
-                                request.on('response', (response) => { handleResponse(response, sender); });
-                                request.on('error', (error) => console.error(error));
-                                request.end();
+                                    request.on('response', (response) => { handleResponse(response, sender); });
+                                    request.on('error', (error) => console.error(error));
+                                    request.end();
+                                });
                             });
                         }
                         break;
