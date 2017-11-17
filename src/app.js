@@ -315,7 +315,9 @@ function handleResponse(response, sender) {
                 }
 
                 console.log(action);
-                console.log(sender)
+                console.log(sender);
+                console.log(responseText);
+
 
                 if (intentName === "Connected Wunderlist") {
                     message.quick_replies = [{
