@@ -606,7 +606,7 @@ function getNokiaMeasurements(userid) {
                                     salesforce.sobject('Weight_Measurements__c')
                                         .create({
                                                 Account__c: client.handle,
-                                                Date_Time_Measurement__c: Date(date).toISOString,
+                                                Date_Time_Measurement__c: Date(date).toISOString(),
                                                 Value__c: value
                                             },
                                             function(err, ret) {
