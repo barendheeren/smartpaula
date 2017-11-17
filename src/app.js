@@ -1032,12 +1032,12 @@ app.post('/webhook/salesforce', (req, res) => {
 
     if (isDefined(user)) {
         pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'SF' LIMIT 1", [user])
-            .then(res => {
-                if (res.rowCount) {
-                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' LIMIT 1", [res.rows[0].id]).then(res => {
-                        let id = res.rows[0].id;
-                        let handle = res.rows[0].handle;
-                        let type = res.rows[0].type;
+            .then(result => {
+                if (result.rowCount) {
+                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' LIMIT 1", [result.rows[0].id]).then(result => {
+                        let id = result.rows[0].id;
+                        let handle = result.rows[0].handle;
+                        let type = result.rows[0].type;
 
                         if (!sessionIds.has(handle)) {
                             sessionIds.set(handle, uuid.v1());
@@ -1058,10 +1058,10 @@ app.post('/webhook/salesforce', (req, res) => {
                             facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
                                 () => {
                                     facebook.sendMessage(handle, { text: response });
-                                    res.status(200).send
+                                    result.status(200).send
                                 });
                         } else {
-                            console.error('Nothing given to respond...', user);
+                            console.error('Nothing given to respond...');
                             res.status(400).send('Nothing to respond...');
                         }
 
@@ -1072,7 +1072,7 @@ app.post('/webhook/salesforce', (req, res) => {
                 }
             });
     } else {
-        console.error('No user Defined ', user);
+        console.error('No user Defined ');
         res.status(400).send('No user given');
     }
 });
