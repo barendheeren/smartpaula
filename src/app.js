@@ -326,7 +326,7 @@ function handleResponse(response, sender) {
                                     }
                                 })
                             }
-                        });
+                        });                       
                         break;
                     case "my_facebook_id":
                         message.text += '\n' + sender;
@@ -369,6 +369,8 @@ function handleResponse(response, sender) {
                             facebook.sendMessage(fbuser, message, callback);
                         });
                     });
+                } else {
+                    facebook.sendSenderAction(sender, 'typing_off');
                 }
             }
 
@@ -726,10 +728,10 @@ function addRecipeToList(list, accessToken, recipe, number) {
             if (row.amount) {
                 item += (row.amount * number).toString();
                 if (row.unit) {
-                    item += row.unit;
+                    item += ' ' + row.unit;
                 }
             }
-            item += row.name
+            item += ' ' + row.name
 
             console.log(item);
                     
