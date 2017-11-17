@@ -121,7 +121,7 @@ function handleResponse(response, sender) {
                         }
                     });
                 }
-            } else if (isDefined(responseText)) {
+            } else {
                 let message = {
                     text: responseText
                 };
@@ -311,18 +311,20 @@ function handleResponse(response, sender) {
                     delete message.quick_replies;
                 }
 
-                // facebook API limit for text length is 640,
-                // so we must split message if needed
-                let splittedText = splitResponse(message.text);
-                // Send messages asynchronously, to ensure they arrive in the right order 
-                async.eachSeries(splittedText, (textPart, callback) => {
-                    message.text = textPart;
-                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                        let fbuser = result.rows[0].handle;
-                        console.log('found user ', fbuser, result.rows[0]);
-                        facebook.sendMessage(fbuser, message, callback);
+                if (isDefined(responseText)) {
+                    // facebook API limit for text length is 640,
+                    // so we must split message if needed
+                    let splittedText = splitResponse(message.text);
+                    // Send messages asynchronously, to ensure they arrive in the right order 
+                    async.eachSeries(splittedText, (textPart, callback) => {
+                        message.text = textPart;
+                        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                            let fbuser = result.rows[0].handle;
+                            console.log('found user ', fbuser, result.rows[0]);
+                            facebook.sendMessage(fbuser, message, callback);
+                        });
                     });
-                });
+                }
             }
 
             // Some messages Have a custom payload, we need to handle this payload;
