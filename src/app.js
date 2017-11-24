@@ -1025,6 +1025,7 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
 
 app.post('/webhook/salesforce', (req, res) => {
     let body = JSON.parse(req.body);
+    console.log(body);
     let user = body.UID;
     let intent = body.Intent;
     let response = body.Response;
