@@ -196,7 +196,7 @@ function handleResponse(response, sender) {
                                             if (isDefined(salesforce_id)) {
                                                 pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                                                     let handle = result.rows[0].handle;
-                                                    salesforce.sobject('Answer').create({
+                                                    salesforce.sobject('Questionnaire_Answer__c').create({
                                                         Account__c: handle,
                                                         Questionnaire__c: salesforce_id,
                                                         Question_Number__c: answer_no,
