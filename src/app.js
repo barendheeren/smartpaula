@@ -230,8 +230,11 @@ function handleResponse(response, sender) {
 
                     // User wants to start a new questionnare
                     case "start_vragenlijst":
-                        pool.query({ text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
-                            .catch(e => console.error(e, e.stack));
+                        console.log(resolvedQuery);
+                        if (resolvedQuery !== 'PAM_vragenlijst_start' && resolvedQuery !== 'SF12_vragenlijst_start') {
+                            pool.query({ text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
+                                .catch(e => console.error(e, e.stack));
+                        }
                         break;
 
                     // User wants to create a new wunderlist-list
@@ -1025,11 +1028,14 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
 
 app.post('/webhook/salesforce', (req, res) => {
     let body = JSON.parse(req.body);
+
     console.log(body);
+
     let user = body.UID;
     let intent = body.Intent;
     let response = body.Response;
     let subject = body.Subject;
+    let questionnare = body.Questionnare;
 
     if (isDefined(user)) {
         pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'SF' LIMIT 1", [user])

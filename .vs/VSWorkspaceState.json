@@ -3,7 +3,8 @@
     "",
     "\\src",
     "\\src\\data",
-    "\\src\\services"
+    "\\src\\services",
+    "\\views"
   ],
   "SelectedNode": "\\src\\app.js",
   "PreviewInSolutionExplorer": false
