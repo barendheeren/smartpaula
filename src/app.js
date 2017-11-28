@@ -185,13 +185,25 @@ function handleResponse(response, sender) {
 
                         if (typeof score !== 'undefined') {
                             score = score || 0;
-                            pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
+                            pool.query('SELECT id, salesforce_id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
                                 .then(res => {
                                     let vragenlijst = res.rows[0].id;
+                                    let salesforce_id = res.rows[0].salesforce_id;
                                     pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
                                         .then(res => {
                                             let answer_no = res.rowCount + 1;
                                             pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, score, answer_no]);
+                                            if (isDefined(salesforce_id)) {
+                                                pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
+                                                    let handle = result.rows[0].handle;
+                                                    salesforce.sobject('Answer').create({
+                                                        Account__c: handle,
+                                                        Questionnaire__c: salesforce_id,
+                                                        Question_Number__c: answer_no,
+                                                        Score__c: score
+                                                    })
+                                                });
+                                            }
                                         });
                                 });
                         }
