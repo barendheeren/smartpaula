@@ -1035,7 +1035,7 @@ app.post('/webhook/salesforce', (req, res) => {
     let intent = body.Intent;
     let response = body.Response;
     let subject = body.Subject;
-    let questionnare = body.Questionnare;
+    let questionnaire = body.Questionnaire;
 
     if (isDefined(user)) {
         pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'SF' LIMIT 1", [user])
@@ -1059,8 +1059,18 @@ app.post('/webhook/salesforce', (req, res) => {
                             request.on('response', (response) => { handleResponse(response, handle); });
                             request.on('error', (error) => console.error(error));
 
+                            if (isDefined(questionnaire)) {
+                                let type;
+                                if (intent.includes('PAM')) {
+                                    type = 'PAM';
+                                } else if (intent.includes('SF12')) {
+                                    type = 'SF12';
+                                }
+                                pool.query('INSERT INTO vragenlijsten (client, vragenlijst, salesforce_id) VALUES ($1, $2, $3)', [id, type, questionnaire])
+                            }
+
                             request.end();
-                            res.status(200).send
+                            res.status(200).send();
                         } else if (isDefined(response) && isDefined(subject)) {
                             facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
                                 () => {
