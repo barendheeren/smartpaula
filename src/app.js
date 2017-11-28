@@ -222,18 +222,31 @@ function handleResponse(response, sender) {
 
                     case "SF12_sum":
                         let sf12Score = parameters.sf12_score;
-                        console.log('score', sf12Score);
                         if (typeof sf12Score !== 'undefined') {
                             sf12Score = sf12Score || 0;
-                            pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
+                            pool.query('SELECT id, salesforce_id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
                                 .then(res => {
-                                    console.log('LIST', res);
                                     if (res.rowCount) {
                                         let vragenlijst = res.rows[0].id;
+                                        let salesforce_id = res.rows[0].salesforce_id;
                                         pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
                                             .then(res => {
                                                 let answer_no = res.rowCount + 1;
                                                 pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, sf12Score, answer_no]);
+                                                if (isDefined(salesforce_id)) {
+                                                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
+                                                        let handle = result.rows[0].handle;
+                                                        salesforce.sobject('Questionnaire_Answer__c').create({
+                                                            Account__c: handle,
+                                                            Questionnaire__c: salesforce_id,
+                                                            Question_Number__c: answer_no,
+                                                            Answer_Text__c: sf12Score
+                                                        },
+                                                            function (err, ret) {
+                                                                if (err || !ret.success) { return console.error(err, ret); }
+                                                            })
+                                                    });
+                                                }
                                             });
                                     }
                                 });
