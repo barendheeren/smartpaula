@@ -201,7 +201,10 @@ function handleResponse(response, sender) {
                                                         Questionnaire__c: salesforce_id,
                                                         Question_Number__c: answer_no,
                                                         Score__c: score
-                                                    })
+                                                    },
+                                                        function (err, ret) {
+                                                            if (err || !ret.success) { return console.error(err, ret); }
+                                                        })
                                                 });
                                             }
                                         });
