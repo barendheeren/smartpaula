@@ -6,29 +6,29 @@ const request = require('request');
 
 const HOSTNAME = process.env.HOSTNAME;
 
+function queryStringToJSON (str) {
+    var pairs = str.split('&');
+    var result = {};
+    pairs.forEach(function (pair) {
+        pair = pair.split('=');
+        var name = pair[0]
+        var value = pair[1]
+        if (name.length)
+            if (result[name] !== undefined) {
+                if (!result[name].push) {
+                    result[name] = [result[name]];
+                }
+                result[name].push(value || '');
+            } else {
+                result[name] = value || '';
+            }
+    });
+    return (result);
+}
+
 let Vitadock = function(applicationToken, applicationSecret) {
     this._applicationToken = applicationToken;
     this._applicationSecret = applicationSecret;
-
-    this._queryStringToJSON = function (str) {
-        var pairs = str.split('&');
-        var result = {};
-        pairs.forEach(function (pair) {
-            pair = pair.split('=');
-            var name = pair[0]
-            var value = pair[1]
-            if (name.length)
-                if (result[name] !== undefined) {
-                    if (!result[name].push) {
-                        result[name] = [result[name]];
-                    }
-                    result[name].push(value || '');
-                } else {
-                    result[name] = value || '';
-                }
-        });
-        return (result);
-    }
 
     this._oAuth = new OAuth({
         consumer: {
@@ -95,7 +95,7 @@ Vitadock.prototype.authorizeAccessToken = function (accessToken, accessSecret, v
         }
     }, function (error, response, body) {
         if (error) { return callback(error); }
-        let data = this._queryStringToJSON(body);
+        let data = queryStringToJSON(body);
         callback(error, `https://cloud.vitadock.com/desiredaccessrights/request?oauth_token=${data.oauth_token}`, data,oauth_token, data.oauth_secret);
     });
 }
