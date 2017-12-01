@@ -51,7 +51,7 @@ Vitadock.prototype.getRequestUrl = function(callback) {
         method: 'POST'
     };
 
-    let oauth_header = oAuth.toHeader(oAuth.authorize(request_data));
+    let oauth_header = this._oAuth.toHeader(this._oAuth.authorize(request_data));
 
     request({
         url: request_data.url,
