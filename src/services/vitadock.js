@@ -6,60 +6,97 @@ const request = require('request');
 
 const HOSTNAME = process.env.HOSTNAME;
 
-let Vitadock = function(applicationToken, applicationSecret, callbackUrl) {
+let Vitadock = function(applicationToken, applicationSecret) {
     this._applicationToken = applicationToken;
     this._applicationSecret = applicationSecret;
-    this._callbackUrl = callbackUrl;
 
     this._oAuth = new OAuth({
         consumer: {
-            key: this._applicationToken,
-            secret: this._applicationSecret
+            key: VITADOCK_API_TOKEN,
+            secret: VITADOCK_API_SECRET
         },
+        parameter_seperator: ',',
         signature_method: 'HMAC-SHA256',
-        hash_function: function(base_string, key) {
+        hash_function: function (base_string, key) {
             return crypto.createHmac('sha256', key).update(base_string).digest('base64');
         }
     });
 };
 
-Vitadock.prototype.getRequestUrl = function(fbUser, callback) {
+Vitadock.prototype._queryStringToJSON = function (str) {
+    var pairs = str.split('&');
+    var result = {};
+    pairs.forEach(function (pair) {
+        pair = pair.split('=');
+        var name = pair[0]
+        var value = pair[1]
+        if (name.length)
+            if (result[name] !== undefined) {
+                if (!result[name].push) {
+                    result[name] = [result[name]];
+                }
+                result[name].push(value || '');
+            } else {
+                result[name] = value || '';
+            }
+    });
+    return (result);
+}
+
+Vitadock.prototype.getRequestUrl = function(callback) {
     callback = callback || function() {};
 
-    var request_data = {
-        url: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
-        method: 'POST',
-        data: {}
+    let request_data = {
+        url: 'https://cloud.vitadock.com/auth/unauthorizedaccesses',
+        method: 'POST'
     };
 
-    var oauth_header = this._oAuth.authorize(request_data, {
-        key: this._applicationToken,
-        secret: this._applicationSecret
-    });
+    let oauth_header = oAuth.toHeader(oAuth.authorize(request_data));
 
-    console.log(oauth_header);
-
-    request.post({
-        url: 'https://test-cloud.vitadock.com/auth/unauthorizedaccesses',
+    request({
+        url: request_data.url,
+        method: request_data.method,
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': this._oAuth.toHeader(oauth_header)['Authorization']
+            Authorization: oauth_header.Authorization
         }
-    }, function(error, response, body) {
-        console.log(error, body);
+    }, function (error, response, body) {
+        if (error) { callback(error); return; }
+        let data = this._queryStringToJSON(body);
+        callback(null, `https://cloud.vitadock.com/desiredaccessrights/request?oauth_token=${data.oauth_token}`, data.oauth_token, data.oauth_secret);
     });
-    /**
-    this._oAuth.getOAuthRequestToken((error, oAuthToken, oAuthTokenSecret, results) => {
-        let authUrl = 'https://test-cloud.vitadock.com/desiredaccessrights/request?' +
-            'oauth_consumer_key=' + this._applicationToken +
-            '&oauth_token=' + oAuthToken;
-        if (error) {
-            callback(error);
-            return;
-        }
-        callback(null, authUrl, oAuthToken, oAuthTokenSecret);
-    });
-     */
 };
+
+Vitadock.prototype.authorizeAccessToken = function (accessToken, accessSecret, verifier, callback) {
+    callback = callback || function () { };
+
+    let request_data = {
+        url: 'https://cloud.vitadock.com/auth/accesses/verify',
+        method: 'POST',
+        data: {
+            oauth_verifier: verifier
+        }
+    };
+
+    let token = {
+        key: accessToken,
+        secret: accessSecret
+    };
+
+    let oauth_header = oAuth.toHeader(oAuth.authorize(request_data, token));
+
+    request({
+        url: request_data.url,
+        method: request_data.method,
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Authorization: oauth_header.Authorization
+        }
+    }, function (error, response, body) {
+        if (error) { return callback(error); }
+        let data = this._queryStringToJSON(body);
+        callback(error, `https://cloud.vitadock.com/desiredaccessrights/request?oauth_token=${data.oauth_token}`, data,oauth_token, data.oauth_secret);
+    });
+}
 
 module.exports = Vitadock;

@@ -3,9 +3,8 @@
     "",
     "\\src",
     "\\src\\data",
-    "\\src\\services",
-    "\\views"
+    "\\src\\services"
   ],
-  "SelectedNode": "\\src\\app.js",
+  "SelectedNode": "\\src\\services\\vitadock.js",
   "PreviewInSolutionExplorer": false
 }

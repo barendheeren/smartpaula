@@ -29,8 +29,8 @@ const NOKIA_API_KEY = process.env.NOKIA_API_KEY;
 const NOKIA_API_SECRET = process.env.NOKIA_API_SECRET;
 const WUNDERLIST_CLIENT_ID = process.env.WUNDERLIST_CLIENT_ID;
 const WUNDERLIST_CLIENT_SECRET = process.env.WUNDERLIST_CLIENT_SECRET;
-const VITADOCK_API_TOKEN = 'K5dojLgjbuudcrUbl68VDElVTCg2zh6wnbjkAeG7XmNYdCJJKoScdhqr3uulzeRq';
-const VITADOCK_API_SECRET = 'TUEo6BU3xL0VmhdRfDssmaV6n3L94jFbrgGRYVf99LRovG0C6rBGhgqiwurs3a2N';
+const VITADOCK_API_TOKEN = 'VAyawiKnhK8KwNPnM7Mjrw6hTb5RchEuivf7uXnvPAc2Ysjun7BxMz4AwkKo1eCm';
+const VITADOCK_API_SECRET = 'lutENPhz51lEbAVJdPP2YR12i0Xv9wssW8rkMtaqLN8rVXYcmGvBoMwemoUcmCGT';
 const HOSTNAME = process.env.HOSTNAME;
 const DEFAULT_INTENT_REFER_TO = process.env.DEFAULT_INTENT_REFER_TO;
 const DEFAULT_INTENTS = ['57b82498-053c-4776-8be9-228c420e6c13', 'b429ecdc-21f4-4a07-8165-3620023185ba'];
@@ -57,6 +57,7 @@ const facebook = new Facebook(FB_VERIFY_TOKEN, FB_PAGE_ACCESS_TOKEN);
 /** @const {Vitadock} Vitadock API interface */
 const vitadock = new Vitadock(VITADOCK_API_TOKEN, VITADOCK_API_SECRET);
 
+/** @const {jsforce} Salesforce API interface */
 const salesforce = new jsforce.Connection();
 
 /** @const {Map} Map of existing API.AI session ID's */
@@ -313,6 +314,19 @@ function handleResponse(response, sender) {
                                 case "Wunderlist":
                                     message.text += '\n' + HOSTNAME + 'connect/wunderlist/' + sender;
                                     break;
+                                case "Vitadock":
+                                    vitadock.getRequestUrl((error, url, oAuthToken, oAuthTokenSecret) => {
+                                        if (!error) {
+                                            pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                                                let fbuser = result.rows[0].handle;
+                                                facebook.sendMessage(fbuser, { text: url });
+                                                pool.query('DELETE FROM connect_vitadock WHERE client = $1', [sender]).then(() => {
+                                                    pool.query('INSERT INTO connect_vitadock (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
+                                                        .catch(e => console.error(e, e.stack));
+                                                }).catch(e => console.error(e, e.stack));
+                                            });
+                                        }
+                                    })
                             }
                         }
                         break;
@@ -1121,6 +1135,70 @@ app.post('/webhook/salesforce', (req, res) => {
         res.status(400).send('No user given');
     }
 });
+
+app.get('webhook/vitadock', (req, res) => {
+
+
+    vitadock.authorizeAccessToken(accessToken, verifier, (authorizedAccessToken, authorizedAccessSecret) => {
+        console.log(authorizedAccessToken, authorizedAccessSecret)
+    })
+
+    try {                              
+        let oAuthToken = req.query.oauth_token;
+        let oAuthVerifier = req.query.oauth_verifier;
+
+        pool.query("SELECT * FROM connect_vitadock WHERE oauth_request_token = $1", [oauthToken])
+            .then(result => {
+                let userOAuth = result.rows[0];
+                vitadock.authorizeAccessToken(
+                    userOAuth.oauth_request_token,
+                    userOAuth.oauth_request_secret,
+                    oAuthVerifier,
+                    (error, oAuthToken, oAuthTokenSecret, results) => {
+                        if (error) {
+                            console.log(error);
+                            response.end(JSON.stringify({
+                                message: 'Error occured while getting access token',
+                                error: error
+                            }));
+                            return;
+                        }
+
+                        pool.query('UPDATE connect_nokia SET oauth_access_token = $1, oauth_access_secret = $2, nokia_user = $3, last_update = \'epoch\' WHERE client = $4', [oAuthToken, oAuthTokenSecret, userid, client]).then(() => {
+                            pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
+                                let handle = result.rows[0].handle;
+
+                                if (!sessionIds.has(handle)) {
+                                    sessionIds.set(handle, uuid.v1());
+                                }
+
+                                let request = apiAiService.eventRequest({
+                                    name: 'nokia_connected'
+                                }, {
+                                        sessionId: sessionIds.get(handle)
+                                    });
+
+                                request.on('response', (response) => { handleResponse(response, client); });
+                                request.on('error', (error) => console.error(error));
+
+                                request.end();
+                                subscribeToNokia(client);
+                            })
+                        });
+
+                    });
+            })
+        return res.status(200).json({
+            status: "ok"
+        });
+    } catch (err) {
+        return res.status(400).json({
+            status: "error",
+            error: err
+        });
+    }
+
+})
 
 app.listen(REST_PORT, () => {
     console.log('Rest service ready on port ' + REST_PORT);
