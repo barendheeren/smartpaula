@@ -12,8 +12,8 @@ let Vitadock = function(applicationToken, applicationSecret) {
 
     this._oAuth = new OAuth({
         consumer: {
-            key: VITADOCK_API_TOKEN,
-            secret: VITADOCK_API_SECRET
+            key: this._applicationToken,
+            secret: this._applicationSecret
         },
         parameter_seperator: ',',
         signature_method: 'HMAC-SHA256',
@@ -88,6 +88,7 @@ Vitadock.prototype.authorizeAccessToken = function (accessToken, accessSecret, v
     request({
         url: request_data.url,
         method: request_data.method,
+        data: request_data.data,
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             Authorization: oauth_header.Authorization
