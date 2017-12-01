@@ -913,7 +913,7 @@ app.get('/connect/vitadock', (req, res) => {
         let oAuthToken = req.query.oauth_token;
         let oAuthVerifier = req.query.oauth_verifier;
 
-        pool.query("SELECT * FROM connect_vitadock WHERE oauth_request_token = $1", [oauthToken])
+        pool.query("SELECT * FROM connect_vitadock WHERE oauth_request_token = $1", [oAuthToken])
             .then(result => {
                 let userOAuth = result.rows[0];
                 vitadock.authorizeAccessToken(
