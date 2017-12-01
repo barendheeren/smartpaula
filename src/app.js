@@ -931,7 +931,7 @@ app.get('/connect/vitadock', (req, res) => {
                     }
 
                     pool.query('UPDATE connect_vitadock SET oauth_access_token = $1, oauth_access_secret = $2, last_update = \'epoch\' WHERE oauth_request_token = $3', [oAuthRequestToken, oAuthRequestTokenSecret, oAuthToken]).then(() => {
-                        pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
+                        pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [result.rows[0].client]).then(result => {
                             let handle = result.rows[0].handle;
 
                             if (!sessionIds.has(handle)) {
