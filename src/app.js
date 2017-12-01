@@ -916,6 +916,7 @@ app.get('/connect/vitadock', (req, res) => {
     pool.query("SELECT * FROM connect_vitadock WHERE oauth_request_token = $1", [oAuthToken])
         .then(result => {
             let userOAuth = result.rows[0];
+            let client = userOAuth.client;
             vitadock.authorizeAccessToken(
                 userOAuth.oauth_request_token,
                 userOAuth.oauth_request_secret,
@@ -931,7 +932,7 @@ app.get('/connect/vitadock', (req, res) => {
                     }
 
                     pool.query('UPDATE connect_vitadock SET oauth_access_token = $1, oauth_access_secret = $2, last_update = \'epoch\' WHERE oauth_request_token = $3', [oAuthRequestToken, oAuthRequestTokenSecret, oAuthToken]).then(() => {
-                        pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [result.rows[0].client]).then(result => {
+                        pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
                             let handle = result.rows[0].handle;
 
                             if (!sessionIds.has(handle)) {
@@ -948,7 +949,6 @@ app.get('/connect/vitadock', (req, res) => {
                             request.on('error', (error) => console.error(error));
 
                             request.end();
-                            subscribeToNokia(client);
                         })
                     });
 
