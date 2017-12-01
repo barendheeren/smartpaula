@@ -920,7 +920,7 @@ app.get('/connect/vitadock', (req, res) => {
                 userOAuth.oauth_request_token,
                 userOAuth.oauth_request_secret,
                 oAuthVerifier,
-                (error, oAuthRequestToken, oAuthRequestTokenSecret, results) => {
+                (error, oAuthRequestToken, oAuthRequestTokenSecret) => {
                     if (error) {
                         console.log(error);
                         response.end(JSON.stringify({
