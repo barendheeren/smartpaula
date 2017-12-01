@@ -10,6 +10,26 @@ let Vitadock = function(applicationToken, applicationSecret) {
     this._applicationToken = applicationToken;
     this._applicationSecret = applicationSecret;
 
+    this._queryStringToJSON = function (str) {
+        var pairs = str.split('&');
+        var result = {};
+        pairs.forEach(function (pair) {
+            pair = pair.split('=');
+            var name = pair[0]
+            var value = pair[1]
+            if (name.length)
+                if (result[name] !== undefined) {
+                    if (!result[name].push) {
+                        result[name] = [result[name]];
+                    }
+                    result[name].push(value || '');
+                } else {
+                    result[name] = value || '';
+                }
+        });
+        return (result);
+    }
+
     this._oAuth = new OAuth({
         consumer: {
             key: this._applicationToken,
@@ -22,26 +42,6 @@ let Vitadock = function(applicationToken, applicationSecret) {
         }
     });
 };
-
-Vitadock.prototype._queryStringToJSON = function (str) {
-    var pairs = str.split('&');
-    var result = {};
-    pairs.forEach(function (pair) {
-        pair = pair.split('=');
-        var name = pair[0]
-        var value = pair[1]
-        if (name.length)
-            if (result[name] !== undefined) {
-                if (!result[name].push) {
-                    result[name] = [result[name]];
-                }
-                result[name].push(value || '');
-            } else {
-                result[name] = value || '';
-            }
-    });
-    return (result);
-}
 
 Vitadock.prototype.getRequestUrl = function(callback) {
     callback = callback || function() {};
