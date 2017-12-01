@@ -906,7 +906,65 @@ app.get('/connect/wunderlist/', (req, res) => {
             error: err
         });
     }
-})
+});
+
+app.get('/connect/vitadock', (req, res) => {
+    try {
+        let oAuthToken = req.query.oauth_token;
+        let oAuthVerifier = req.query.oauth_verifier;
+
+        pool.query("SELECT * FROM connect_vitadock WHERE oauth_request_token = $1", [oauthToken])
+            .then(result => {
+                let userOAuth = result.rows[0];
+                vitadock.authorizeAccessToken(
+                    userOAuth.oauth_request_token,
+                    userOAuth.oauth_request_secret,
+                    oAuthVerifier,
+                    (error, oAuthRequestToken, oAuthRequestTokenSecret, results) => {
+                        if (error) {
+                            console.log(error);
+                            response.end(JSON.stringify({
+                                message: 'Error occured while getting access token',
+                                error: error
+                            }));
+                            return;
+                        }
+
+                        pool.query('UPDATE connect_vitadock SET oauth_access_token = $1, oauth_access_secret = $2, last_update = \'epoch\' WHERE oauth_request_token = $4', [oAuthRequestToken, oAuthRequestTokenSecret, oAuthToken]).then(() => {
+                            pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
+                                let handle = result.rows[0].handle;
+
+                                if (!sessionIds.has(handle)) {
+                                    sessionIds.set(handle, uuid.v1());
+                                }
+
+                                let request = apiAiService.eventRequest({
+                                    name: 'nokia_connected'
+                                }, {
+                                        sessionId: sessionIds.get(handle)
+                                    });
+
+                                request.on('response', (response) => { handleResponse(response, client); });
+                                request.on('error', (error) => console.error(error));
+
+                                request.end();
+                                subscribeToNokia(client);
+                            })
+                        });
+
+                    });
+            })
+        return res.status(200).json({
+            status: "ok"
+        });
+    } catch (err) {
+        return res.status(400).json({
+            status: "error",
+            error: err
+        });
+    }
+
+});
 
 // Facebook API webhook
 app.get('/webhook/', (req, res) => {
@@ -1136,63 +1194,11 @@ app.post('/webhook/salesforce', (req, res) => {
     }
 });
 
-app.get('webhook/vitadock', (req, res) => {        
-    try {                              
-        let oAuthToken = req.query.oauth_token;
-        let oAuthVerifier = req.query.oauth_verifier;
-
-        pool.query("SELECT * FROM connect_vitadock WHERE oauth_request_token = $1", [oauthToken])
-            .then(result => {
-                let userOAuth = result.rows[0];
-                vitadock.authorizeAccessToken(
-                    userOAuth.oauth_request_token,
-                    userOAuth.oauth_request_secret,
-                    oAuthVerifier,
-                    (error, oAuthRequestToken, oAuthRequestTokenSecret, results) => {
-                        if (error) {
-                            console.log(error);
-                            response.end(JSON.stringify({
-                                message: 'Error occured while getting access token',
-                                error: error
-                            }));
-                            return;
-                        }
-
-                        pool.query('UPDATE connect_vitadock SET oauth_access_token = $1, oauth_access_secret = $2, last_update = \'epoch\' WHERE oauth_request_token = $4', [oAuthRequestToken, oAuthRequestTokenSecret, oAuthToken]).then(() => {
-                            pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
-                                let handle = result.rows[0].handle;
-
-                                if (!sessionIds.has(handle)) {
-                                    sessionIds.set(handle, uuid.v1());
-                                }
-
-                                let request = apiAiService.eventRequest({
-                                    name: 'nokia_connected'
-                                }, {
-                                        sessionId: sessionIds.get(handle)
-                                    });
-
-                                request.on('response', (response) => { handleResponse(response, client); });
-                                request.on('error', (error) => console.error(error));
-
-                                request.end();
-                                subscribeToNokia(client);
-                            })
-                        });
-
-                    });
-            })
-        return res.status(200).json({
-            status: "ok"
-        });
-    } catch (err) {
-        return res.status(400).json({
-            status: "error",
-            error: err
-        });
-    }
-
-})
+app.all('/webhook/vitadock', (req, res) => {
+    console.log(req.body);
+    console.log(req.query);
+    res.status(200).send('OK');
+});
 
 app.listen(REST_PORT, () => {
     console.log('Rest service ready on port ' + REST_PORT);
