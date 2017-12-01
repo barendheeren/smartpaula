@@ -84,7 +84,7 @@ Vitadock.prototype.authorizeAccessToken = function (accessToken, accessSecret, v
         secret: accessSecret
     };
 
-    let oauth_header = oAuth.toHeader(oAuth.authorize(request_data, token));
+    let oauth_header = this._oAuth.toHeader(this._oAuth.authorize(request_data, token));
 
     request({
         url: request_data.url,
