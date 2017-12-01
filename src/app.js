@@ -909,7 +909,7 @@ app.get('/connect/wunderlist/', (req, res) => {
 });
 
 app.get('/connect/vitadock', (req, res) => {
-    try {
+    //try {
         let oAuthToken = req.query.oauth_token;
         let oAuthVerifier = req.query.oauth_verifier;
 
@@ -957,13 +957,13 @@ app.get('/connect/vitadock', (req, res) => {
         return res.status(200).json({
             status: "ok"
         });
-    } catch (err) {
+ /**   } catch (err) {
         return res.status(400).json({
             status: "error",
             error: err
         });
     }
-
+    */
 });
 
 // Facebook API webhook
