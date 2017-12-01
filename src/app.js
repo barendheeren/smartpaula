@@ -1136,13 +1136,7 @@ app.post('/webhook/salesforce', (req, res) => {
     }
 });
 
-app.get('webhook/vitadock', (req, res) => {
-
-
-    vitadock.authorizeAccessToken(accessToken, verifier, (authorizedAccessToken, authorizedAccessSecret) => {
-        console.log(authorizedAccessToken, authorizedAccessSecret)
-    })
-
+app.get('webhook/vitadock', (req, res) => {        
     try {                              
         let oAuthToken = req.query.oauth_token;
         let oAuthVerifier = req.query.oauth_verifier;
@@ -1154,7 +1148,7 @@ app.get('webhook/vitadock', (req, res) => {
                     userOAuth.oauth_request_token,
                     userOAuth.oauth_request_secret,
                     oAuthVerifier,
-                    (error, oAuthToken, oAuthTokenSecret, results) => {
+                    (error, oAuthRequestToken, oAuthRequestTokenSecret, results) => {
                         if (error) {
                             console.log(error);
                             response.end(JSON.stringify({
@@ -1164,7 +1158,7 @@ app.get('webhook/vitadock', (req, res) => {
                             return;
                         }
 
-                        pool.query('UPDATE connect_nokia SET oauth_access_token = $1, oauth_access_secret = $2, nokia_user = $3, last_update = \'epoch\' WHERE client = $4', [oAuthToken, oAuthTokenSecret, userid, client]).then(() => {
+                        pool.query('UPDATE connect_vitadock SET oauth_access_token = $1, oauth_access_secret = $2, last_update = \'epoch\' WHERE oauth_request_token = $4', [oAuthRequestToken, oAuthRequestTokenSecret, oAuthToken]).then(() => {
                             pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
                                 let handle = result.rows[0].handle;
 
