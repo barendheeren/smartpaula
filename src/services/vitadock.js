@@ -62,7 +62,7 @@ Vitadock.prototype.getRequestUrl = function(callback) {
         }
     }, function (error, response, body) {
         if (error) { callback(error); return; }
-        let data = this._queryStringToJSON(body);
+        let data = queryStringToJSON(body);
         callback(null, `https://cloud.vitadock.com/desiredaccessrights/request?oauth_token=${data.oauth_token}`, data.oauth_token, data.oauth_secret);
     });
 };
