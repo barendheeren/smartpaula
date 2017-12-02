@@ -102,4 +102,37 @@ Vitadock.prototype.authorizeAccessToken = function (accessToken, accessSecret, v
     });
 }
 
+Vitadock.prototype.getData = function (accessToken, accessSecret, date_since, callback, start, max) {
+    callback = callback || function () { };
+    date_since = date_since || 0;
+    start = start || 0
+    max = max || 1000
+
+    let request_data = {
+        url: `https://cloud.vitadock.com/data/glucodockglucoses/sync?start=${start}&max=${max}&date_since=${date_since}`,
+        method: 'GET',
+    }
+
+    let token = {
+        key: accessToken,
+        secret: accessSecret
+    }
+
+    let oauth_header = this._oAuth.toHeader(this._oAuth.authorize(request_data, token));
+
+    request({
+        url: request_data.url,
+        method: request_data.method,
+        headers: {
+            'Accept': 'application/json',
+            'Content-type': 'application/json',
+            Authorization: oauth_header.Authorization
+        }
+    }, function (error, response, body) {
+        if (error) { return callback(error) }
+        let data = JSON.parse(body);
+        callback(null, data);
+    });
+}
+
 module.exports = Vitadock;

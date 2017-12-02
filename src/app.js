@@ -785,6 +785,27 @@ function addRecipeToList(list, accessToken, recipe, number) {
     });
 }
 
+function getVitaDockData(client) {
+    pool.query('SELECT * FROM connect_vitadock WHERE client = $1', [client]).then(result => {
+        let userOAuth = result.rows[0];
+        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
+            let handle = result.rows[0].handle;
+            vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, userOAuth.last_update, (error, data) => {
+                for (item of data) {
+                    console.log(item);
+                    salesforce.sobject('Glucose_Measurement__c').create({
+                        Account__c: handle,
+                        Blood_Glucose__c: item.blood_glucose,
+                    },
+                    function (err, ret) {
+                        if (err || !ret.success) { return console.error(err, ret); }
+                    });
+                }
+            });
+        })
+    });
+}
+
 const app = express();
 const frontofficeid = 1533050426761050;
 
@@ -909,61 +930,61 @@ app.get('/connect/wunderlist/', (req, res) => {
 });
 
 app.get('/connect/vitadock', (req, res) => {
-    //try {
-    let oAuthToken = req.query.oauth_token;
-    let oAuthVerifier = req.query.oauth_verifier;
+    try {
+        let oAuthToken = req.query.oauth_token;
+        let oAuthVerifier = req.query.oauth_verifier;
 
-    pool.query("SELECT * FROM connect_vitadock WHERE oauth_request_token = $1", [oAuthToken])
-        .then(result => {
-            let userOAuth = result.rows[0];
-            let client = userOAuth.client;
-            vitadock.authorizeAccessToken(
-                userOAuth.oauth_request_token,
-                userOAuth.oauth_request_secret,
-                oAuthVerifier,
-                (error, oAuthRequestToken, oAuthRequestTokenSecret) => {
-                    if (error) {
-                        console.log(error);
-                        response.end(JSON.stringify({
-                            message: 'Error occured while getting access token',
-                            error: error
-                        }));
-                        return;
-                    }
+        pool.query("SELECT * FROM connect_vitadock WHERE oauth_request_token = $1", [oAuthToken])
+            .then(result => {
+                let userOAuth = result.rows[0];
+                let client = userOAuth.client;
+                vitadock.authorizeAccessToken(
+                    userOAuth.oauth_request_token,
+                    userOAuth.oauth_request_secret,
+                    oAuthVerifier,
+                    (error, oAuthRequestToken, oAuthRequestTokenSecret) => {
+                        if (error) {
+                            console.log(error);
+                            response.end(JSON.stringify({
+                                message: 'Error occured while getting access token',
+                                error: error
+                            }));
+                            return;
+                        }
 
-                    pool.query('UPDATE connect_vitadock SET oauth_access_token = $1, oauth_access_secret = $2, last_update = \'epoch\' WHERE oauth_request_token = $3', [oAuthRequestToken, oAuthRequestTokenSecret, oAuthToken]).then(() => {
-                        pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
-                            let handle = result.rows[0].handle;
+                        pool.query('UPDATE connect_vitadock SET oauth_access_token = $1, oauth_access_secret = $2, last_update = \'epoch\' WHERE oauth_request_token = $3', [oAuthRequestToken, oAuthRequestTokenSecret, oAuthToken]).then(() => {
+                            pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
+                                let handle = result.rows[0].handle;
 
-                            if (!sessionIds.has(handle)) {
-                                sessionIds.set(handle, uuid.v1());
-                            }
+                                if (!sessionIds.has(handle)) {
+                                    sessionIds.set(handle, uuid.v1());
+                                }
 
-                            let request = apiAiService.eventRequest({
-                                name: 'nokia_connected'
-                            }, {
-                                    sessionId: sessionIds.get(handle)
-                                });
+                                let request = apiAiService.eventRequest({
+                                    name: 'vitadock_connected'
+                                }, {
+                                        sessionId: sessionIds.get(handle)
+                                    });
 
-                            request.on('response', (response) => { handleResponse(response, client); });
-                            request.on('error', (error) => console.error(error));
+                                request.on('response', (response) => { handleResponse(response, client); });
+                                request.on('error', (error) => console.error(error));
 
-                            request.end();
-                        })
+                                request.end();
+                                getVitaDockData(client);
+                            });
+                        });
+
                     });
-
-                });
-        })
-    return res.status(200).json({
-        status: "ok"
-    });
-    /**   } catch (err) {
-           return res.status(400).json({
-               status: "error",
-               error: err
-           });
-       }
-       */
+            })
+        return res.status(200).json({
+            status: "ok"
+        });
+    } catch (err) {
+        return res.status(400).json({
+            status: "error",
+            error: err
+        });
+    }
 });
 
 // Facebook API webhook
