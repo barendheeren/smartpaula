@@ -792,6 +792,7 @@ function getVitaDockData(client) {
             let handle = result.rows[0].handle;
             vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, Math.round(userOAuth.time), (error, data) => {
                 if (error) { console.log(error); return; }
+                console.log(data);
                 for (item of data) {
                     console.log(item);
                     salesforce.sobject('Glucose_Measurement__c').create({
