@@ -637,7 +637,7 @@ function getNokiaMeasurements(userid) {
                                             salesforce.sobject('Blood_Pressure_measurement__c')
                                                 .create({
                                                     Diastole_Blood_Pressure__c: value,
-                                                    Heartbeat__c: Date(date).toISOString()
+                                                    Heartbeat__c: value
                                                 }, function (err, ret) {
                                                     if (err || !ret.success) { return console.error(err, ret); } else {
                                                         pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
@@ -795,7 +795,8 @@ function getVitaDockData(client) {
                 for (let item of data) {                                              
                     salesforce.sobject('Glucose_Measurement__c').create({
                         Account__c: handle,
-                        Blood_Glucose__c: item.blood_glucose,
+                        Blood_Glucose__c: item.bloodGlucose,
+                        Date_Time_Measurement__c: Date(item.measurementDate).toISOString();
                     },
                     function (err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }     
