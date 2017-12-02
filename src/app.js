@@ -806,6 +806,26 @@ function getVitaDockData(client) {
     });
 }
 
+function queryStringToJSON(str) {
+    var pairs = str.split('&');
+    var result = {};
+    pairs.forEach(function (pair) {
+        pair = pair.split('=');
+        var name = pair[0]
+        var value = pair[1]
+        if (name.length)
+            if (result[name] !== undefined) {
+                if (!result[name].push) {
+                    result[name] = [result[name]];
+                }
+                result[name].push(value || '');
+            } else {
+                result[name] = value || '';
+            }
+    });
+    return (result);
+}
+
 const app = express();
 const frontofficeid = 1533050426761050;
 
@@ -1218,6 +1238,12 @@ app.post('/webhook/salesforce', (req, res) => {
 app.all('/webhook/vitadock', (req, res) => {
     console.log(req.body);
     console.log(req.query);
+    console.log(req.headers);
+
+    if (req.query.module_id === 1) {
+        authorization = queryStringToJSON(req.headers['Authorization']);
+        console.log(authorization);
+    }
     res.status(200).send('OK');
 });
 
