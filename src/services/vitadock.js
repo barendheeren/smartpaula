@@ -118,8 +118,8 @@ Vitadock.prototype.getData = function (accessToken, accessSecret, date_since, ca
         secret: accessSecret
     }
 
-    let oauth_header = this._oAuth.toHeader(this._oAuth.authorize(request_data, token));  
-
+    let oauth_header = this._oAuth.toHeader(this._oAuth.authorize(request_data, token));
+    console.log(request_data);
     request({
         url: request_data.url,
         method: request_data.method,

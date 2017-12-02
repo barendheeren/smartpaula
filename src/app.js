@@ -790,10 +790,11 @@ function getVitaDockData(client) {
         let userOAuth = result.rows[0];
         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
             let handle = result.rows[0].handle;
-            vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, Math.round(userOAuth.time), (error, data) => {
+            vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, userOAuth.time, (error, data) => {
                 if (error) { console.log(error); return; }                                      
                 for (let item of data) {                                              
-                    let date = new Date(item.measurementDate)
+                    console.log(item);
+                    let date = new Date(item.measurementDate);
                     salesforce.sobject('Glucose_Measurement__c').create({
                         Account__c: handle,
                         Blood_Glucose__c: item.bloodGlucose,
