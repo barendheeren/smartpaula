@@ -106,7 +106,7 @@ Vitadock.prototype.getData = function (accessToken, accessSecret, date_since, ca
     callback = callback || function () { };
     date_since = date_since || 0;
     start = start || 0
-    max = max || 1000
+    max = max || 100
 
     let request_data = {
         url: `https://cloud.vitadock.com/data/glucodockglucoses/sync?start=${start}&max=${max}&date_since=${date_since}`,
