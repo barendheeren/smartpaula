@@ -786,11 +786,11 @@ function addRecipeToList(list, accessToken, recipe, number) {
 }
 
 function getVitaDockData(client) {
-    pool.query('SELECT * FROM connect_vitadock WHERE client = $1', [client]).then(result => {
+    pool.query('SELECT *, extract(epoch from last_update) as time FROM connect_vitadock WHERE client = $1', [client]).then(result => {
         let userOAuth = result.rows[0];
         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
             let handle = result.rows[0].handle;
-            vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, userOAuth.last_update, (error, data) => {
+            vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, Math.round(userOAuth.time), (error, data) => {
                 if (error) { console.log(error); return; }
                 for (item of data) {
                     console.log(item);
