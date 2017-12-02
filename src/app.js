@@ -791,18 +791,17 @@ function getVitaDockData(client) {
         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
             let handle = result.rows[0].handle;
             vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, Math.round(userOAuth.time), (error, data) => {
-                if (error) { console.log(error); return; }
-                console.log(data);
-                for (item of data) {
-                    console.log(item);
+                if (error) { console.log(error); return; }                                      
+                for (let item of data) {                                              
                     salesforce.sobject('Glucose_Measurement__c').create({
                         Account__c: handle,
                         Blood_Glucose__c: item.blood_glucose,
                     },
                     function (err, ret) {
-                        if (err || !ret.success) { return console.error(err, ret); }
+                        if (err || !ret.success) { return console.error(err, ret); }     
                     });
                 }
+                pool.query('UPDATE connect_vitadock SET last_update = (SELECT NOW()) WHERE client = $1', [client]);
             });
         })
     });
