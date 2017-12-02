@@ -129,7 +129,7 @@ Vitadock.prototype.getData = function (accessToken, accessSecret, date_since, ca
             Authorization: oauth_header.Authorization
         }
     }, function (error, response, body) {
-        if (error) { return callback(error) }
+        if (error || response.statusCode !== 200) { return error ? callback(error) : callback(body); }
         let data = JSON.parse(body);
         callback(null, data);
     });

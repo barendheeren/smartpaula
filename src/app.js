@@ -791,6 +791,7 @@ function getVitaDockData(client) {
         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
             let handle = result.rows[0].handle;
             vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, userOAuth.last_update, (error, data) => {
+                if (error) { console.log(error); return; }
                 for (item of data) {
                     console.log(item);
                     salesforce.sobject('Glucose_Measurement__c').create({
@@ -1243,7 +1244,9 @@ app.all('/webhook/vitadock', (req, res) => {
 
     if (req.query.module_id === '1') {
         let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');
-        console.log(authorization);
+        pool.query('SELECT client FROM connect_vitadock WHERE oauth_access_token = $1', [authorization.oauth_token]).then(result => {
+            getVitaDockData(result.rows[0].client);
+        });
     }
     res.status(200).send('OK');
 });
