@@ -806,8 +806,9 @@ function getVitaDockData(client) {
     });
 }
 
-function queryStringToJSON(str) {
-    var pairs = str.split('&');
+function queryStringToJSON(str, sep) {
+    sep = sep || '&'
+    var pairs = str.split(sep);
     var result = {};
     pairs.forEach(function (pair) {
         pair = pair.split('=');
@@ -1241,7 +1242,7 @@ app.all('/webhook/vitadock', (req, res) => {
     console.log(req.headers);
 
     if (req.query.module_id === '1') {
-        let authorization = queryStringToJSON(req.headers.authorization);
+        let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');
         console.log(authorization);
     }
     res.status(200).send('OK');
