@@ -1241,7 +1241,7 @@ app.all('/webhook/vitadock', (req, res) => {
     console.log(req.headers);
 
     if (req.query.module_id === '1') {
-        authorization = queryStringToJSON(req.headers.authorization);
+        let authorization = queryStringToJSON(req.headers.authorization);
         console.log(authorization);
     }
     res.status(200).send('OK');
