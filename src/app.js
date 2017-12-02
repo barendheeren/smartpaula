@@ -1238,12 +1238,11 @@ app.post('/webhook/salesforce', (req, res) => {
 });
 
 app.all('/webhook/vitadock', (req, res) => {
-    console.log(req.body);
-    console.log(req.query);
-    console.log(req.headers);
-
     if (req.query.module_id === '1') {
         let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');
+
+        console.log(authorization.oauth_token);
+
         pool.query('SELECT client FROM connect_vitadock WHERE oauth_access_token = $1', [authorization.oauth_token]).then(result => {
             getVitaDockData(result.rows[0].client);
         });
