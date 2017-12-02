@@ -793,10 +793,11 @@ function getVitaDockData(client) {
             vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, Math.round(userOAuth.time), (error, data) => {
                 if (error) { console.log(error); return; }                                      
                 for (let item of data) {                                              
+                    let date = new Date(item.measurementDate)
                     salesforce.sobject('Glucose_Measurement__c').create({
                         Account__c: handle,
                         Blood_Glucose__c: item.bloodGlucose,
-                        Date_Time_Measurement__c: Date(item.measurementDate).toISOString(),
+                        Date_Time_Measurement__c: date.toISOString(),
                     },
                     function (err, ret) {
                         if (err || !ret.success) { return console.error(err, ret); }     
