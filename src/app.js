@@ -92,7 +92,7 @@ function handleResponse(response, sender) {
                 let feedback = parameters.feedback === '👍' ? '+' : '-';
                 pool.query('UPDATE log SET feedback = $1 WHERE client = $2 AND time = (select max(time) FROM log WHERE client = $2)', [feedback, sender]);
             } else {
-                logAction(sender, intent);
+                logAction(sender, intent, parameters);
             }
 
             if (isDefined(responseData) && isDefined(responseData.facebook)) {
@@ -761,8 +761,11 @@ function getOrRegisterUser(handle, type) {
     });
 }
 
-function logAction(user, intent) {
-    return pool.query("INSERT INTO log (client, intent, time) VALUES ($1, $2, (SELECT NOW()))", [user, intent]);
+function logAction(user, intent, parameters) {
+    if ('ignore' in parameters) {
+        delete parameters['ignore'];
+    }
+    return pool.query("INSERT INTO log (client, intent, parameters, time) VALUES ($1, $2, $3, (SELECT NOW()))", [user, intent, JSON.stringify(parameters)]);
 }
 
 function addRecipeToList(list, accessToken, recipe, number) {
@@ -1203,9 +1206,7 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
 });
 
 app.post('/webhook/salesforce', (req, res) => {
-    let body = JSON.parse(req.body);
-
-    console.log(body);
+    let body = JSON.parse(req.body); 
 
     let user = body.UID;
     let intent = body.Intent;
@@ -1272,8 +1273,7 @@ app.post('/webhook/salesforce', (req, res) => {
 
 app.all('/webhook/vitadock', (req, res) => {
     if (req.query.module_id === '0' || req.query.module_id === '1' || req.query.module_id === '4') {
-        let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');
-        console.log(JSON.parse(authorization.oauth_token));
+        let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');    
         pool.query('SELECT client FROM connect_vitadock WHERE oauth_access_token = $1', [JSON.parse(authorization.oauth_token)]).then(result => {
             getVitaDockData(result.rows[0].client, [JSON.parse(req.query.module_id)]);
         });
