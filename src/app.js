@@ -395,8 +395,7 @@ function handleResponse(response, sender) {
                         "content_type": "text",
                         "title": "Niet nu",
                         "payload": "Niet nu"
-                    }
-                    ]
+                    }];
                 } else if (intentName === 'PAM_vragenlijst_einde') {
                     delete message.quick_replies;
                 }
@@ -791,17 +790,17 @@ function getVitaDockData(client) {
         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
             let handle = result.rows[0].handle;
             vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, Math.round(userOAuth.time * 1000), (error, data) => {
-                if (error) { console.log(error); return; }               
-                for (let item of data) {                                              
+                if (error) { console.log(error); return; }
+                for (let item of data) {
                     let date = new Date(item.measurementDate);
                     salesforce.sobject('Glucose_Measurement__c').create({
                         Account__c: handle,
                         Blood_Glucose__c: item.bloodGlucose,
                         Date_Time_Measurement__c: date.toISOString(),
                     },
-                    function (err, ret) {
-                        if (err || !ret.success) { return console.error(err, ret); }     
-                    });
+                        function (err, ret) {
+                            if (err || !ret.success) { return console.error(err, ret); }
+                        });
                 }
                 pool.query('UPDATE connect_vitadock SET last_update = (SELECT NOW()) WHERE client = $1', [client]);
             });
@@ -1241,7 +1240,7 @@ app.post('/webhook/salesforce', (req, res) => {
 
 app.all('/webhook/vitadock', (req, res) => {
     if (req.query.module_id === '1') {
-        let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');         
+        let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');
         console.log(JSON.parse(authorization.oauth_token));
         pool.query('SELECT client FROM connect_vitadock WHERE oauth_access_token = $1', [JSON.parse(authorization.oauth_token)]).then(result => {
             getVitaDockData(result.rows[0].client);
