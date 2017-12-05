@@ -388,8 +388,8 @@ function handleResponse(response, sender) {
                 if (intentName === "Connected Wunderlist") {
                     message.quick_replies = [{
                         "content_type": "text",
-                        "title": "Nieuwe lijst aanmaken",
-                        "payload": "Nieuwe boodschappenlijst"
+                        "title": "Nieuwe lijst",
+                        "payload": "Nieuwe lijst"
                     },
                     {
                         "content_type": "text",
@@ -791,8 +791,7 @@ function getVitaDockData(client) {
         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
             let handle = result.rows[0].handle;
             vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, Math.round(userOAuth.time * 1000), (error, data) => {
-                if (error) { console.log(error); return; }                                     
-                console.log(data)
+                if (error) { console.log(error); return; }               
                 for (let item of data) {                                              
                     let date = new Date(item.measurementDate);
                     salesforce.sobject('Glucose_Measurement__c').create({
