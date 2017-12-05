@@ -25,7 +25,7 @@ function queryStringToJSON (str) {
     });
     return (result);
 }
-
+   
 let Vitadock = function(applicationToken, applicationSecret) {
     this._applicationToken = applicationToken;
     this._applicationSecret = applicationSecret;
@@ -41,6 +41,12 @@ let Vitadock = function(applicationToken, applicationSecret) {
             return crypto.createHmac('sha256', key).update(base_string).digest('base64');
         }
     });
+
+    this._types = {
+        0: 'cardiodocks',
+        1: 'glucodockglucoses',
+        4: 'targetscales'
+    };
 };
 
 Vitadock.prototype.getRequestUrl = function(callback) {
@@ -102,14 +108,14 @@ Vitadock.prototype.authorizeAccessToken = function (accessToken, accessSecret, v
     });
 }
 
-Vitadock.prototype.getData = function (accessToken, accessSecret, date_since, callback, start, max) {
+Vitadock.prototype.getData = function (accessToken, accessSecret, type, date_since, callback, start, max) {
     callback = callback || function () { };
     date_since = date_since || 0;
     start = start || 0
     max = max || 100
 
     let request_data = {
-        url: `https://cloud.vitadock.com/data/glucodockglucoses/sync?start=${start}&max=${max}&date_since=${date_since}`,
+        url: `https://cloud.vitadock.com/data/${this._types[type]}/sync?start=${start}&max=${max}&date_since=${date_since}`,
         method: 'GET',
     }
 

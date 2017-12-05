@@ -784,26 +784,58 @@ function addRecipeToList(list, accessToken, recipe, number) {
     });
 }
 
-function getVitaDockData(client) {
+function getVitaDockData(client, types) {
+    types = types || [0, 1, 4];
     pool.query('SELECT *, extract(epoch from last_update) as time FROM connect_vitadock WHERE client = $1', [client]).then(result => {
         let userOAuth = result.rows[0];
         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
             let handle = result.rows[0].handle;
-            vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, Math.round(userOAuth.time * 1000), (error, data) => {
-                if (error) { console.log(error); return; }
-                for (let item of data) {
-                    let date = new Date(item.measurementDate);
-                    salesforce.sobject('Glucose_Measurement__c').create({
-                        Account__c: handle,
-                        Blood_Glucose__c: item.bloodGlucose,
-                        Date_Time_Measurement__c: date.toISOString(),
-                    },
-                        function (err, ret) {
-                            if (err || !ret.success) { return console.error(err, ret); }
-                        });
-                }
-                pool.query('UPDATE connect_vitadock SET last_update = (SELECT NOW()) WHERE client = $1', [client]);
-            });
+            for (let type of types) {
+                vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, type, Math.round(userOAuth.time * 1000), (error, data) => {
+                    if (error) { console.log(error); return; }
+                    for (let item of data) {
+                        let date = new Date(item.measurementDate);
+                        if (type === 0) {
+                            salesforce.sobject('Blood_Pressure_Measurement__c').create({
+                                Account__c: handle,
+                                Diastole_Blood_Pressure__c: item.diastole,
+                                Systole_Blood_Pressure__c: item.systole,
+                                Heartbeat__c: item.pulse,
+
+                                Date_Time_Measurement__c: date.toISOString(),
+                            },
+                                function (err, ret) {
+                                    if (err || !ret.success) { return console.error(err, ret); }
+                                });
+                        }
+                        else if (type === 1) {
+                            salesforce.sobject('Glucose_Measurement__c').create({
+                                Account__c: handle,
+                                Blood_Glucose__c: item.bloodGlucose,
+                                Date_Time_Measurement__c: date.toISOString(),
+                            },
+                                function (err, ret) {
+                                    if (err || !ret.success) { return console.error(err, ret); }
+                                });
+                        } else if (type === 4) {
+                            salesforce.sobject('Weight_Measurements__c').create({
+                                Account__c: handle,
+                                Value__c: item.bodyWeight,
+                                BMI__c: item.bmi,
+                                Body_Fat_Percentage__c: item.bodyFat,
+                                Body_Water_Percentage__c: item.bodyWater,
+                                Bone_Mass_Percentage__c: item.boneMass,
+                                Muscle_Mass_Percentage__c: item.muscleMass,
+                                Date_Time_Measurement__c: date.toISOString(),
+                            },
+                                function (err, ret) {
+                                    if (err || !ret.success) { return console.error(err, ret); }
+                                });
+                        }
+                    }
+                });
+            }
+            pool.query('UPDATE connect_vitadock SET last_update = (SELECT NOW()) WHERE client = $1', [client]);
         })
     });
 }
@@ -1239,11 +1271,11 @@ app.post('/webhook/salesforce', (req, res) => {
 });
 
 app.all('/webhook/vitadock', (req, res) => {
-    if (req.query.module_id === '1') {
+    if (req.query.module_id === '0' || req.query.module_id === '1' || req.query.module_id === '4') {
         let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');
         console.log(JSON.parse(authorization.oauth_token));
         pool.query('SELECT client FROM connect_vitadock WHERE oauth_access_token = $1', [JSON.parse(authorization.oauth_token)]).then(result => {
-            getVitaDockData(result.rows[0].client);
+            getVitaDockData(result.rows[0].client, JSON.parse(req.query.module_id));
         });
     }
     res.status(200).send('OK');
