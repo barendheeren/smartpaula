@@ -240,7 +240,7 @@ function handleResponse(response, sender) {
                                                         let numericalSf12Score = sf12Score;
                                                         for (let list in sf12Answers) {
                                                             if (sf12Answers.hasOwnProperty(list)) {
-                                                                for (let item of sf12Answers.list) {
+                                                                for (let item of sf12Answers[list]) {
                                                                     if (item.title === sf12Score) {
                                                                         numericalSF12Score = item.payload;
                                                                     }
