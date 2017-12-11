@@ -238,10 +238,12 @@ function handleResponse(response, sender) {
                                                     pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                                                         let handle = result.rows[0].handle;
                                                         let numericalSf12Score = sf12Score;
-                                                        for (list of sf12Answers) {
-                                                            for (item of list) {
-                                                                if (item.title === sf12Score) {
-                                                                    numericalSF12Score = item.payload;
+                                                        for (let list in sf12Answers) {
+                                                            if (sf12Answers.hasOwnProperty(list)) {
+                                                                for (let item of sf12Answers.list) {
+                                                                    if (item.title === sf12Score) {
+                                                                        numericalSF12Score = item.payload;
+                                                                    }
                                                                 }
                                                             }
                                                         }
