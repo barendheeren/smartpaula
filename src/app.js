@@ -237,11 +237,17 @@ function handleResponse(response, sender) {
                                                 if (isDefined(salesforce_id)) {
                                                     pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                                                         let handle = result.rows[0].handle;
+                                                        allSf12Scores = []
+                                                        for (list of sf12Answers) {
+                                                            allSf12Scores.concat(list);
+                                                        }
+                                                        numericalSf12Score = allSf12Scores.find(obj => { return obj.title === sf12Score }, this).payload;
+                                                        console.log(numericalSf12Score);
                                                         salesforce.sobject('Questionnaire_Answer__c').create({
                                                             Account__c: handle,
                                                             Questionnaire__c: salesforce_id,
                                                             Question_Number__c: answer_no,
-                                                            Answer_Text__c: sf12Score
+                                                            Answer_Text__c: numericalSf12Score
                                                         },
                                                             function (err, ret) {
                                                                 if (err || !ret.success) { return console.error(err, ret); }
