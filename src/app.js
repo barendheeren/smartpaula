@@ -252,7 +252,8 @@ function handleResponse(response, sender) {
                                                             Account__c: handle,
                                                             Questionnaire__c: salesforce_id,
                                                             Question_Number__c: answer_no,
-                                                            Answer_Text__c: numericalSf12Score
+                                                            Score__c: numericalSf12Score,
+                                                            Answer_Text__c: sf12Score
                                                         },
                                                             function (err, ret) {
                                                                 if (err || !ret.success) { return console.error(err, ret); }
