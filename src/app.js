@@ -251,7 +251,7 @@ function handleResponse(response, sender) {
                                                         salesforce.sobject('Questionnaire_Answer__c').create({
                                                             Account__c: handle,
                                                             Questionnaire__c: salesforce_id,
-                                                            Question_Number__c: answer_no,
+                                                            Question_Number__c: answer_no + 100,
                                                             Score__c: numericalSf12Score,
                                                             Answer_Text__c: sf12Score
                                                         },
