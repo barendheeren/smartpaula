@@ -247,7 +247,7 @@ function handleResponse(response, sender) {
                                                                 }
                                                             }
                                                         }
-                                                        console.log(numericalSf12Score);
+                                                        console.log(numericalSf12Score, typeof numericalSf12Score);
                                                         salesforce.sobject('Questionnaire_Answer__c').create({
                                                             Account__c: handle,
                                                             Questionnaire__c: salesforce_id,

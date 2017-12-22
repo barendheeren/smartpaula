@@ -39,7 +39,7 @@ let hindered = [{
 let yesNo = [{
     "content_type": "text",
     "title": "Ja",
-    "payload": "Nee helemaal niet beperkt"
+    "payload": "Ja",
 }, {
     "content_type": "text",
     "title": "Nee",
