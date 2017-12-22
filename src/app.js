@@ -244,7 +244,7 @@ function handleResponse(response, sender) {
                                                             if (sf12Answers.hasOwnProperty(list)) {
                                                                 console.log('hasOwnProperty')
                                                                 for (let item of sf12Answers[list]) {
-                                                                    console.log(item.payload.replace(/\s/g, ''), sf12Score.replace(/\s/g, ''), typeof item.payload.replace(/\s/g, ''), typeof sf12Score.replace(/\s/g, ''), item.payload.replace(/\s/g, '') === sf12Score.replace(/\s/g, ''), item.payload.replace(/\s/g, '') == sf12Score.replace(/\s/g, ''), numericalSf12Score.replace(/\s/g, ''));
+                                                                    console.log(item.payload.replace(/\s/g, ''), sf12Score.replace(/\s/g, ''), typeof item.payload.replace(/\s/g, ''), typeof sf12Score.replace(/\s/g, ''), item.payload.replace(/\s/g, '') === sf12Score.replace(/\s/g, ''), item.payload.replace(/\s/g, '') == sf12Score.replace(/\s/g, ''), numericalSf12Score);
                                                                     if (item.payload.replace(/\s/g, '') == sf12Score.replace(/\s/g, '')) {
                                                                         numericalSf12Score = sf12Answers[list].indexOf(item)
                                                                     }
