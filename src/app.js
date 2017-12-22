@@ -242,7 +242,7 @@ function handleResponse(response, sender) {
                                                         for (let list in sf12Answers) {
                                                             console.log(list);
                                                             if (sf12Answers.hasOwnProperty(list)) {
-                                                                console.lof('hasOwnProperty')
+                                                                console.log('hasOwnProperty')
                                                                 for (let item of sf12Answers[list]) {
                                                                     console.log(item, numericalSf12Score);
                                                                     if (item.title === sf12Score) {
