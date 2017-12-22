@@ -237,21 +237,16 @@ function handleResponse(response, sender) {
                                                 if (isDefined(salesforce_id)) {
                                                     pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                                                         let handle = result.rows[0].handle;
-                                                        let numericalSf12Score = sf12Score;
-                                                        console.log(sf12Score, typeof sf12Score);
-                                                        for (let list in sf12Answers) {
-                                                            console.log(list);
-                                                            if (sf12Answers.hasOwnProperty(list)) {
-                                                                console.log('hasOwnProperty')
+                                                        let numericalSf12Score = sf12Score;          
+                                                        for (let list in sf12Answers) {             
+                                                            if (sf12Answers.hasOwnProperty(list)) {   
                                                                 for (let item of sf12Answers[list]) {
-                                                                    console.log(item.payload.replace(/\s/g, ''), sf12Score.replace(/\s/g, ''), typeof item.payload.replace(/\s/g, ''), typeof sf12Score.replace(/\s/g, ''), item.payload.replace(/\s/g, '') === sf12Score.replace(/\s/g, ''), item.payload.replace(/\s/g, '') == sf12Score.replace(/\s/g, ''), numericalSf12Score);
                                                                     if (item.payload.replace(/\s/g, '') == sf12Score.replace(/\s/g, '')) {
                                                                         numericalSf12Score = sf12Answers[list].indexOf(item)
                                                                     }
                                                                 }
                                                             }
-                                                        }
-                                                        console.log(numericalSf12Score, typeof numericalSf12Score);
+                                                        }                                                             
                                                         salesforce.sobject('Questionnaire_Answer__c').create({
                                                             Account__c: handle,
                                                             Questionnaire__c: salesforce_id,
