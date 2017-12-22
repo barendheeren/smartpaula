@@ -245,7 +245,7 @@ function handleResponse(response, sender) {
                                                                 console.log('hasOwnProperty')
                                                                 for (let item of sf12Answers[list]) {
                                                                     console.log(item.title, sf12Score);
-                                                                    if (item.title === sf12Score) {
+                                                                    if (item.title == sf12Score) {
                                                                         numericalSf12Score = sf12Answers[list].indexOf(item)
                                                                     }
                                                                 }
