@@ -244,8 +244,8 @@ function handleResponse(response, sender) {
                                                             if (sf12Answers.hasOwnProperty(list)) {
                                                                 console.log('hasOwnProperty')
                                                                 for (let item of sf12Answers[list]) {
-                                                                    console.log(item.payload, sf12Score, typeof item.payload, typeof sf12Score, item.payload === sf12Score, item.payload == sf12Score, numericalSf12Score);
-                                                                    if (item.payload == sf12Score) {
+                                                                    console.log(item.payload.replace(/\s/g, ''), sf12Score.replace(/\s/g, ''), typeof item.payload.replace(/\s/g, ''), typeof sf12Score.replace(/\s/g, ''), item.payload.replace(/\s/g, '') === sf12Score.replace(/\s/g, ''), item.payload.replace(/\s/g, '') == sf12Score.replace(/\s/g, ''), numericalSf12Score.replace(/\s/g, ''));
+                                                                    if (item.payload.replace(/\s/g, '') == sf12Score.replace(/\s/g, '')) {
                                                                         numericalSf12Score = sf12Answers[list].indexOf(item)
                                                                     }
                                                                 }
