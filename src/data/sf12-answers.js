@@ -1,97 +1,97 @@
 let badGreat = [{
     "content_type": "text",
     "title": "Uitstekend",
-    "payload": 4
+    "payload": "Uitstekend",
 }, {
     "content_type": "text",
     "title": "Zeer goed",
-    "payload": 3
+    "payload": "Zeer goed",
 }, {
     "content_type": "text",
     "title": "Goed",
-    "payload": 2
+    "payload": "Goed",
 }, {
     "content_type": "text",
     "title": "Matig",
-    "payload": 1
+    "payload": "Matig",
 }, {
     "content_type": "text",
     "title": "Slecht",
-    "payload": 0
+    "payload": "Slecht",
 }];
 
 let hindered = [{
     "content_type": "text",
     "title": "Ja, ernstig beperkt",
-    "payload": 2
+    "payload": "Ja, ernstig beperkt"
 },
 {
     "content_type": "text",
     "title": "Ja, een beetje beperkt",
-    "payload": 1
+    "payload": "Ja, een beetje beperkt"
 },
 {
     "content_type": "text",
     "title": "Nee helemaal niet beperkt",
-    "payload": 0
+    "payload": "Nee helemaal niet beperkt",
 }];
 
 let yesNo = [{
     "content_type": "text",
     "title": "Ja",
-    "payload": 1
+    "payload": "Nee helemaal niet beperkt"
 }, {
     "content_type": "text",
     "title": "Nee",
-    "payload": 0
+    "payload": "Nee",
 }];
 
 let notLot = [{
     "content_type": "text",
     "title": "Heel erg veel",
-    "payload": 4
+    "payload": "Heel erg veel",
 }, {
     "content_type": "text",
     "title": "Veel",
-    "payload": 3
+    "payload": "Veel",
 }, {
     "content_type": "text",
     "title": "Nogal",
-    "payload": 2
+    "payload": "Nogal",
 }, {
     "content_type": "text",
     "title": "Een klein beetje",
-    "payload": 1
+    "payload": "Een klein beetje",
 }, {
     "content_type": "text",
     "title": "Helemaal niet",
-    "payload": 0
+    "payload": "Helemaal niet",
 }];
 
 let neverAlways = [{
     "content_type": "text",
     "title": "Voortdurend",
-    "payload": 5
+    "payload": "Voortdurend"
 }, {
     "content_type": "text",
     "title": "Meestal",
-    "payload": 4
+    "payload": "Meestal",
 }, {
     "content_type": "text",
     "title": "Vaak",
-    "payload": 3
+    "payload": "Vaak",
 }, {
     "content_type": "text",
     "title": "Soms",
-    "payload": 2
+    "payload": "Soms",
 }, {
     "content_type": "text",
     "title": "Zelden",
-    "payload": 1
+    "payload": "Zelden"
 }, {
     "content_type": "text",
     "title": "Nooit",
-    "payload": 0
+    "payload": "Nooit",
 }];
 
 module.exports = {
