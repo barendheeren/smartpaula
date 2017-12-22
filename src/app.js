@@ -242,7 +242,7 @@ function handleResponse(response, sender) {
                                                             if (sf12Answers.hasOwnProperty(list)) {
                                                                 for (let item of sf12Answers[list]) {
                                                                     if (item.title === sf12Score) {
-                                                                        numericalSf12Score = item.payload;
+                                                                        numericalSf12Score = sf12Answers[list].indexOf(item)
                                                                     }
                                                                 }
                                                             }
