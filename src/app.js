@@ -29,8 +29,10 @@ const NOKIA_API_KEY = process.env.NOKIA_API_KEY;
 const NOKIA_API_SECRET = process.env.NOKIA_API_SECRET;
 const WUNDERLIST_CLIENT_ID = process.env.WUNDERLIST_CLIENT_ID;
 const WUNDERLIST_CLIENT_SECRET = process.env.WUNDERLIST_CLIENT_SECRET;
-const VITADOCK_API_TOKEN = 'VAyawiKnhK8KwNPnM7Mjrw6hTb5RchEuivf7uXnvPAc2Ysjun7BxMz4AwkKo1eCm';
-const VITADOCK_API_SECRET = 'lutENPhz51lEbAVJdPP2YR12i0Xv9wssW8rkMtaqLN8rVXYcmGvBoMwemoUcmCGT';
+const VITADOCK_API_TOKEN = process.env.VITADOCK_API_TOKEN;
+const VITADOCK_API_SECRET = process.env.VITADOCK_API_SECRET;
+const SALESFORCE_USER = process.env.SALESFORCE_USER;
+const SALESFORCE_PASSWORD = process.env.SALESFORCE_PASSWORD;
 const HOSTNAME = process.env.HOSTNAME;
 const DEFAULT_INTENT_REFER_TO = process.env.DEFAULT_INTENT_REFER_TO;
 const DEFAULT_INTENTS = ['57b82498-053c-4776-8be9-228c420e6c13', 'b429ecdc-21f4-4a07-8165-3620023185ba'];
@@ -1297,7 +1299,7 @@ app.listen(REST_PORT, () => {
 });
 
 
-salesforce.login('apiuser@radbouddiabetes.trial', 'REshape911', (err, userInfo) => {
+salesforce.login(SALESFORCE_USER, SALESFORCE_PASSWORD, (err, userInfo) => {
     if (err) { return console.error(err); }
     // Subscribe to the facebook API
     facebook.doSubscribeRequest();
