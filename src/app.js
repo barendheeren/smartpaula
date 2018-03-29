@@ -1186,7 +1186,7 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
 
         switch (operation) {
             case 'create':
-                pool.query('INSERT INTO wunderlist_items (list, id, item, date_added) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET item = $2', [list, id, item, created_at]);
+                pool.query('INSERT INTO wunderlist_items (list, id, item, date_added) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET item = $3', [list, id, item, created_at]);
                 break;
             case 'update':
                 if (completed) {
