@@ -782,9 +782,7 @@ function addRecipeToList(list, accessToken, recipe, number) {
                     item += ' ' + row.unit;
                 }
             }
-            item += ' ' + row.name
-
-            console.log(item);
+            item += ' ' + row.name   
 
             wunderlist.createTask(list, accessToken, item);
         });
@@ -1184,13 +1182,11 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
         let item = body.after.title;
         let created_at = body.after.created_at;
         let completed_at = body.after.completed_at;
-        let completed = body.after.completed;
-
-        console.log(body);
+        let completed = body.after.completed;             
 
         switch (operation) {
             case 'create':
-                pool.query('INSERT INTO wunderlist_items (list, id, item, date_added) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET item = $1', [list, id, item, created_at]);
+                pool.query('INSERT INTO wunderlist_items (list, id, item, date_added) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET item = $2', [list, id, item, created_at]);
                 break;
             case 'update':
                 if (completed) {
