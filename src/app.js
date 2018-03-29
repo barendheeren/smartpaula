@@ -1208,6 +1208,7 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
                 break;
         }
 
+        return res.status(200);
 
     } catch (err) {
         console.log(err);
