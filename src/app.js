@@ -271,8 +271,7 @@ function handleResponse(response, sender) {
                         break;
 
                     // User wants to start a new questionnare
-                    case "start_vragenlijst":
-                        console.log(resolvedQuery);
+                    case "start_vragenlijst":                          
                         if (resolvedQuery !== 'PAM_vragenlijst_start' && resolvedQuery !== 'SF12_vragenlijst_start') {
                             pool.query({ text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
                                 .catch(e => console.error(e, e.stack));
@@ -393,11 +392,6 @@ function handleResponse(response, sender) {
                         console.warn('Received an unknown action from API.ai: "' + action + '"');
                 }
 
-                console.log(action);
-                console.log(sender);
-                console.log(responseText);
-
-
                 if (intentName === "Connected Wunderlist") {
                     message.quick_replies = [{
                         "content_type": "text",
@@ -421,8 +415,7 @@ function handleResponse(response, sender) {
                     async.eachSeries(splittedText, (textPart, callback) => {
                         message.text = textPart;
                         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                            let fbuser = result.rows[0].handle;
-                            console.log('found user ', fbuser, result.rows[0]);
+                            let fbuser = result.rows[0].handle;                                     
                             facebook.sendMessage(fbuser, message, callback);
                         });
                     });
@@ -479,7 +472,6 @@ function processEvent(event) {
             sessionIds.set(sender, uuid.v1());
         }
 
-        console.log("proces event: ", text);
         //send message to api.ai
         let apiaiRequest = apiAiService.textRequest(text, {
             sessionId: sessionIds.get(sender)
@@ -584,8 +576,7 @@ function getNokiaMeasurements(userid) {
                         if (clientRes.rowCount) {
                             let client = clientRes.rows[0];
                             measureTypes.push(type);
-                            if (user && date && value) {
-                                console.log('MEASUREMENT', type, user, date, value)
+                            if (user && date && value) {                                        
                                 if (type === 9) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value]).then(res => {
                                         if (res.rowCount && res.rows[0].salesforce_id) {
@@ -1208,7 +1199,9 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
                 break;
         }
 
-        return res.status(200);
+        return res.status(200).json({
+            status: "ok"
+        });
 
     } catch (err) {
         console.log(err);
