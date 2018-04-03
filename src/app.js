@@ -407,6 +407,8 @@ function handleResponse(response, sender) {
                     delete message.quick_replies;
                 }
 
+                console.log(responseText);
+                console.log(message)
                 if (isDefined(responseText)) {
                     // facebook API limit for text length is 640,
                     // so we must split message if needed
@@ -424,6 +426,7 @@ function handleResponse(response, sender) {
                 }
             }
 
+            
             // Some messages Have a custom payload, we need to handle this payload;
             response.result.fulfillment.messages.forEach(function (message) {
                 let payload = message.payload;
