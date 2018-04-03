@@ -163,7 +163,7 @@ function handleResponse(response, sender) {
                 console.log('Response as text message');
 
                 // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
-                console.log('intent');
+                console.log(intent);
                 if (DEFAULT_INTENTS.includes(intent)) {
                     pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                         let handle = result.rows[0].handle;
