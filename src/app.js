@@ -779,17 +779,16 @@ function syncAlterdeskChats() {
                 'method': 'GET',
                 'url': HOSTNAME + 'webhook/alterdesk/' + groupchat.id
             };
-            try {
-                alterdesk.post('groupchats/' + groupchat.id + '/hooks', JSON.stringify(webhookData), (success, result) => {
-                    if (!success) {
-                        console.log(result.message);
-                    } else {
-                        console.log(result);
-                    }
-                });
-            } catch (e) {
-                console.log('Error while creating webhook for Alterdesk groupchat ' + groupchat.id + ': ' + e);
-            }
+            alterdesk.http(alterdesk.apiUrl + 'groupchats/' + groupchat.id + '/hooks')
+                .header('Authorization', 'Bearer ' + alterdesk.apiToken)
+                .header('Content-Type', 'application/json; charset=UTF-8')
+                .post(JSON.stringify(webhookData))((err, resp, body) => {
+                if (!resp) {
+                    console.log("No response from Alterdesk");
+                } else if (!(resp.statusCode === 200 || resp.statusCode === 201 || resp.statusCode === 204 || resp.statusCode === 304)) {
+                    console.log("Error while creating webhook for Alterdesk groupchat " + groupchat.id + ": " + body);
+                }
+            });
         }
     });
 }
