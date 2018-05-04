@@ -770,6 +770,7 @@ function subscribeToWunderlist() {
 
 function syncAlterdeskChats() {
     alterdesk.get('groupchats', (success, result) => {
+        console.log(typeof result, result)
         for (let groupchat in result) {
             console.log(groupchat);
             let user = getOrRegisterUser(groupchat.id, 'AD');
@@ -782,9 +783,9 @@ function syncAlterdeskChats() {
             alterdesk.post('groupchats/' + groupchat.id + '/hooks', JSON.stringify(webhookData), (success, json) => {
                 let data = JSON.parse(json);
                 if (!success) {
-                    console.log(data.message);
+                    console.log(data);
                 }
-            })
+            });
         }
     });
 };
