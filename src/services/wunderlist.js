@@ -1,3 +1,5 @@
+'use strict';
+
 const request = require('request');
 const ClientOAuth2 = require('client-oauth2');
 const WunderlistSDK = require('wunderlist');
@@ -56,7 +58,7 @@ Wunderlist.prototype.createList = function (accessToken) {
     });
 
     // TODO Add title as argument for this function
-    return wunderlistAPI.http.lists.create({ title: 'Mijn boodschappen' })
+    return wunderlistAPI.http.lists.create({title: 'Mijn boodschappen'})
         .done(function (listData, statusCode) {
             console.log(listData, statusCode);
             if (statusCode === 200) {
@@ -80,7 +82,7 @@ Wunderlist.prototype.createTask = function (list, accessToken, task) {
         'clientID': this._clientId
     });
 
-    return wunderlistAPI.http.tasks.create({ list_id: list, title: task })
+    return wunderlistAPI.http.tasks.create({list_id: list, title: task})
         .done(function (listData, statusCode) {
             console.log(listData, statusCode);
             if (statusCode === 200) {
@@ -90,7 +92,7 @@ Wunderlist.prototype.createTask = function (list, accessToken, task) {
         .fail(function (resp, code) {
             console.log(resp);
         });
-}
+};
 
 /**
  * Subsribes a new webhook for a specific list. (Wunderlist only allows for webhooks on list level.)
@@ -119,6 +121,6 @@ Wunderlist.prototype.createWebhook = function (accessToken, list, callbackUri, c
             callback(body);
         }
     });
-}
+};
 
 module.exports = Wunderlist;

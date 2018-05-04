@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 
 const OAuth = require('oauth-1.0a');
 const crypto = require('crypto');
@@ -6,14 +6,14 @@ const request = require('request');
 
 const HOSTNAME = process.env.HOSTNAME;
 
-function queryStringToJSON (str) {
-    var pairs = str.split('&');
-    var result = {};
+function queryStringToJSON(str) {
+    let pairs = str.split('&');
+    let result = {};
     pairs.forEach(function (pair) {
         pair = pair.split('=');
-        var name = pair[0]
-        var value = pair[1]
-        if (name.length)
+        let name = pair[0];
+        let value = pair[1];
+        if (name.length) {
             if (result[name] !== undefined) {
                 if (!result[name].push) {
                     result[name] = [result[name]];
@@ -22,11 +22,12 @@ function queryStringToJSON (str) {
             } else {
                 result[name] = value || '';
             }
+        }
     });
     return (result);
 }
-   
-let Vitadock = function(applicationToken, applicationSecret) {
+
+let Vitadock = function (applicationToken, applicationSecret) {
     this._applicationToken = applicationToken;
     this._applicationSecret = applicationSecret;
 
@@ -49,8 +50,9 @@ let Vitadock = function(applicationToken, applicationSecret) {
     };
 };
 
-Vitadock.prototype.getRequestUrl = function(callback) {
-    callback = callback || function() {};
+Vitadock.prototype.getRequestUrl = function (callback) {
+    callback = callback || function () {
+    };
 
     let request_data = {
         url: 'https://cloud.vitadock.com/auth/unauthorizedaccesses',
@@ -67,7 +69,10 @@ Vitadock.prototype.getRequestUrl = function(callback) {
             Authorization: oauth_header.Authorization
         }
     }, function (error, response, body) {
-        if (error) { callback(error); return; }
+        if (error) {
+            callback(error);
+            return;
+        }
         let data = queryStringToJSON(body);
         console.log(data);
         callback(null, `https://cloud.vitadock.com/desiredaccessrights/request?oauth_token=${data.oauth_token}`, data.oauth_token, data.oauth_token_secret);
@@ -101,28 +106,31 @@ Vitadock.prototype.authorizeAccessToken = function (accessToken, accessSecret, v
             Authorization: oauth_header.Authorization
         }
     }, function (error, response, body) {
-        if (error) { return callback(error); }
+        if (error) {
+            return callback(error);
+        }
         let data = queryStringToJSON(body);
         console.log(data);
         callback(error, data.oauth_token, data.oauth_token_secret);
     });
-}
+};
 
 Vitadock.prototype.getData = function (accessToken, accessSecret, type, date_since, callback, start, max) {
-    callback = callback || function () { };
+    callback = callback || function () {
+    };
     date_since = date_since || 0;
-    start = start || 0
-    max = max || 100
+    start = start || 0;
+    max = max || 100;
 
     let request_data = {
         url: `https://cloud.vitadock.com/data/${this._types[type]}/sync?start=${start}&max=${max}&date_since=${date_since}`,
         method: 'GET',
-    }
+    };
 
     let token = {
         key: accessToken,
         secret: accessSecret
-    }
+    };
 
     let oauth_header = this._oAuth.toHeader(this._oAuth.authorize(request_data, token));
     console.log(request_data);
@@ -135,10 +143,12 @@ Vitadock.prototype.getData = function (accessToken, accessSecret, type, date_sin
             Authorization: oauth_header.Authorization
         }
     }, function (error, response, body) {
-        if (error || response.statusCode !== 200) { return error ? callback(error) : callback(body); }
+        if (error || response.statusCode !== 200) {
+            return error ? callback(error) : callback(body);
+        }
         let data = JSON.parse(body);
         callback(null, data);
     });
-}
+};
 
 module.exports = Vitadock;

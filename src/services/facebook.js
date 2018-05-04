@@ -1,11 +1,13 @@
+'use strict';
+
 const request = require('request');
 
-let Facebook = function(verifyToken, pageAccessToken) {
+let Facebook = function (verifyToken, pageAccessToken) {
     this._verifyToken = verifyToken;
     this._pageAccessToken = pageAccessToken;
-}
+};
 
-Facebook.prototype.sendSenderAction = function(sender, action, callback) {
+Facebook.prototype.sendSenderAction = function (sender, action, callback) {
     setTimeout(() => {
         request({
             url: 'https://graph.facebook.com/v2.6/me/messages',
@@ -30,12 +32,12 @@ Facebook.prototype.sendSenderAction = function(sender, action, callback) {
             }
         });
     }, 1000);
-}
+};
 
 /**
  * Subscribe to the facebook message service
  */
-Facebook.prototype.doSubscribeRequest = function() {
+Facebook.prototype.doSubscribeRequest = function () {
     request({
             method: 'POST',
             uri: "https://graph.facebook.com/v2.6/me/subscribed_apps?access_token=" + this._pageAccessToken
@@ -47,7 +49,7 @@ Facebook.prototype.doSubscribeRequest = function() {
                 console.log('Subscription result: ', response.body);
             }
         });
-}
+};
 
 /**
  * Sends a chat message to a facebook user
@@ -55,7 +57,7 @@ Facebook.prototype.doSubscribeRequest = function() {
  * @param {object} messageData Message data to send
  * @param {function} callback Callback function, called when the sending has completed (failed or succeeded)
  */
-Facebook.prototype.sendMessage = function(sender, messageData, callback) {
+Facebook.prototype.sendMessage = function (sender, messageData, callback) {
     this.sendSenderAction(sender, 'typing_off', () => {
         setTimeout(() => {
             request({
@@ -83,14 +85,14 @@ Facebook.prototype.sendMessage = function(sender, messageData, callback) {
             }, 5000);
         });
     });
-}
+};
 
 /**
  * Fetches basic facebook user data (name, gender, age)
  * @param {number} facebookId Facebook Id to find user data for
  * @param {function} callback Callback function, called with the user's profile
  */
-Facebook.prototype.getProfile = function(facebookId, callback) {
+Facebook.prototype.getProfile = function (facebookId, callback) {
     request({
         url: 'https://graph.facebook.com/v2.6/' + facebookId,
         qs: {
@@ -107,6 +109,6 @@ Facebook.prototype.getProfile = function(facebookId, callback) {
             callback(JSON.parse(body));
         }
     });
-}
+};
 
 module.exports = Facebook;

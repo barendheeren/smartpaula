@@ -23,6 +23,7 @@
     "jsforce": "^1.8.0",
     "json-bigint": "^0.2.0",
     "moment": "^2.18.1",
+    "node-messenger-sdk": "git+https://github.com/Alterdesk/node-messenger-sdk.git",
     "node-uuid": "^1.4.7",
     "oauth": "^0.9.15",
     "oauth-1.0a": "^2.2.2",

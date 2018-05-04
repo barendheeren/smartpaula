@@ -1,11 +1,11 @@
-'use strict'
+'use strict';
 
 const OAuth = require('oauth');
 
 const HOSTNAME = process.env.HOSTNAME;
 
 function isDefined(obj) {
-    if (typeof obj == 'undefined') {
+    if (typeof obj === 'undefined') {
         return false;
     }
 
@@ -13,7 +13,7 @@ function isDefined(obj) {
         return false;
     }
 
-    return obj != null;
+    return obj !== null;
 }
 
 /**
@@ -22,7 +22,7 @@ function isDefined(obj) {
  * @param {string} apiSecret NOKIA Health API Secret
  * @param {string} callbackUrl CallbackUrl
  */
-let Nokia = function(apiKey, apiSecret, callbackUrl) {
+let Nokia = function (apiKey, apiSecret, callbackUrl) {
     this._apiKey = apiKey;
     this._apiSecret = apiSecret;
     this._callbackUrl = callbackUrl;
@@ -44,20 +44,21 @@ let Nokia = function(apiKey, apiSecret, callbackUrl) {
  * @param {number} appli Type of measurements to subscribe to.
  * @see https://developer.health.nokia.com/api/doc#api-Notification-notify_subscribe
  */
-Nokia.prototype._subscriptionUrl = function(user, appli) {
+Nokia.prototype._subscriptionUrl = function (user, appli) {
     return 'https://api.health.nokia.com/notify' +
         '?action=subscribe' +
         '&userid=' + user +
         '&callbackurl=' + HOSTNAME + 'webhook/nokia/' + user + '/' + appli +
         '&appli=' + appli;
 };
+
 /**
  * Requests an OAuth 1.0 request token from the Nokia Health API, and stores it in the database. Also builds an authorization
  * url that can be sent to a user in order to authorize Paula to access the user's data on the API
  * @param {number} user User id to associate this token with
  * @param {function} callback Callback function called with (error, authentication URL, Request Token, Request Secret)
  */
-Nokia.prototype.getRequestUrl = function(user, callback) {
+Nokia.prototype.getRequestUrl = function (user, callback) {
     // We need a new OAuth object, because the callback url is specific to each user
     const nokiaAPI = new OAuth.OAuth(
         'https://developer.health.nokia.com/account/request_token',
@@ -79,16 +80,18 @@ Nokia.prototype.getRequestUrl = function(user, callback) {
         }
         callback(null, authUrl, oAuthToken, oAuthTokenSecret);
     });
-}
+};
 
 /**
  * Fetches new data since lastUpdate from the Nokia Health API for a single user
- * @param {number} userid Facebook id or nokia user id
+ * @param {number} nokiaUser Facebook id or nokia user id
+ * @param {string} accessToken Nokia API Access Token
+ * @param {string} accessSecret Nokia API Access Secret
  * @param {int} lastUpdate Last update datetime in epoch timestamp format
  * @param {function} callback Callback function, called when the request is completed
  * @see https://developer.health.nokia.com/api/doc#api-Measure-get_measure
  */
-Nokia.prototype.getMeasurements = function(nokiaUser, accessToken, accessSecret, lastUpdate, callback) {
+Nokia.prototype.getMeasurements = function (nokiaUser, accessToken, accessSecret, lastUpdate, callback) {
     let url = 'https://api.health.nokia.com/measure' + '?action=getmeas' + '&userid=' + nokiaUser + '&lastupdate=' + Math.round(lastUpdate);
     let signedUrl = this._oAuth.signUrl(url, accessToken, accessSecret);
 
@@ -99,7 +102,7 @@ Nokia.prototype.getMeasurements = function(nokiaUser, accessToken, accessSecret,
             callback(measureGroups);
         }
     });
-}
+};
 
 /**
  * Subscribes to new measurements for a user
@@ -109,20 +112,21 @@ Nokia.prototype.getMeasurements = function(nokiaUser, accessToken, accessSecret,
  * @param {int} type Types of measurement to subscribe to
  * @param {function} callback Callback function, passed to the oAuth client HTTP request
  */
-Nokia.prototype.subscribe = function(nokiaUser, accessToken, accessSecret, type, callback) {
+Nokia.prototype.subscribe = function (nokiaUser, accessToken, accessSecret, type, callback) {
     let signedUrl = this._oAuth.signUrl(this._subscriptionUrl(nokiaUser, type), accessToken, accessSecret);
     this._oAuth.get(signedUrl, null, null, callback);
-}
+};
 
 /**
  * Request an Access Token from the NOKIA Health API
  * @param {string} requestToken
  * @param {string} requestSecret
  * @param {string} verifier
+ * @param {function} callback
  * @see oauth.getOAuthAccessToken
  */
-Nokia.prototype.getAccessToken = function(requestToken, requestSecret, verifier, callback) {
+Nokia.prototype.getAccessToken = function (requestToken, requestSecret, verifier, callback) {
     this._oAuth.getOAuthAccessToken(requestToken, requestSecret, verifier, callback);
-}
+};
 
 module.exports = Nokia;

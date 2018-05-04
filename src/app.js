@@ -8,7 +8,7 @@ const uuid = require('node-uuid');
 const request = require('request');
 const JSONbig = require('json-bigint');
 const async = require('async');
-const { Pool, Client } = require('pg');
+const {Pool, Client} = require('pg');
 const util = require('util');
 const path = require('path');
 const cookieParser = require('cookie-parser');
@@ -17,6 +17,7 @@ const Wunderlist = require('./services/wunderlist');
 const Facebook = require('./services/facebook');
 const Nokia = require('./services/nokia');
 const Vitadock = require('./services/vitadock');
+const Alterdesk = require('node-messenger-sdk');
 
 const sf12Answers = require('./data/sf12-answers');
 
@@ -33,13 +34,14 @@ const VITADOCK_API_TOKEN = process.env.VITADOCK_API_TOKEN;
 const VITADOCK_API_SECRET = process.env.VITADOCK_API_SECRET;
 const SALESFORCE_USER = process.env.SALESFORCE_USER;
 const SALESFORCE_PASSWORD = process.env.SALESFORCE_PASSWORD;
+const ALTERDESK_API_TOKEN = process.env.ALTERDESK_TOKEN;
 const HOSTNAME = process.env.HOSTNAME;
 const DEFAULT_INTENT_REFER_TO = process.env.DEFAULT_INTENT_REFER_TO;
 const DEFAULT_INTENTS = ['57b82498-053c-4776-8be9-228c420e6c13', 'b429ecdc-21f4-4a07-8165-3620023185ba'];
 const VIEWS = __dirname + '/views/';
 
 /** @const {Pool} Postgres connection pool */
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({connectionString: process.env.DATABASE_URL});
 
 /** @const {Apiai} API.AI interface */
 const apiAiService = apiai(APIAI_ACCESS_TOKEN, {
@@ -59,8 +61,12 @@ const facebook = new Facebook(FB_VERIFY_TOKEN, FB_PAGE_ACCESS_TOKEN);
 /** @const {Vitadock} Vitadock API interface */
 const vitadock = new Vitadock(VITADOCK_API_TOKEN, VITADOCK_API_SECRET);
 
+/** @const {Alterdesk.Api} Alterdest API interface **/
+const alterdesk = new Alterdesk.Api();
+
 /** @const {jsforce} Salesforce API interface */
 const salesforce = new jsforce.Connection();
+alterdesk.configure(ALTERDESK_API_TOKEN);
 
 /** @const {Map} Map of existing API.AI session ID's */
 const sessionIds = new Map();
@@ -139,26 +145,26 @@ function handleResponse(response, sender) {
                     "title": "😁",
                     "payload": "4"
                 },
-                {
-                    "content_type": "text",
-                    "title": "🙂",
-                    "payload": "3"
-                },
-                {
-                    "content_type": "text",
-                    "title": "😞",
-                    "payload": "2"
-                },
-                {
-                    "content_type": "text",
-                    "title": "😡",
-                    "payload": "1"
-                },
-                {
-                    "content_type": "text",
-                    "title": "N.v.t",
-                    "payload": "0"
-                }
+                    {
+                        "content_type": "text",
+                        "title": "🙂",
+                        "payload": "3"
+                    },
+                    {
+                        "content_type": "text",
+                        "title": "😞",
+                        "payload": "2"
+                    },
+                    {
+                        "content_type": "text",
+                        "title": "😡",
+                        "payload": "1"
+                    },
+                    {
+                        "content_type": "text",
+                        "title": "N.v.t",
+                        "payload": "0"
+                    }
                 ];
                 console.log('Response as text message');
 
@@ -168,14 +174,16 @@ function handleResponse(response, sender) {
                         let handle = result.rows[0].handle;
                         salesforce.sobject('Case')
                             .create({
-                                AccountId: handle,
-                                Status: 'New',
-                                Origin: 'Smart Susan',
-                                Subject: resolvedQuery,
-                            },
-                            function (err, ret) {
-                                if (err || !ret.success) { return console.error(err, ret); }
-                            });
+                                    AccountId: handle,
+                                    Status: 'New',
+                                    Origin: 'Smart Susan',
+                                    Subject: resolvedQuery,
+                                },
+                                function (err, ret) {
+                                    if (err || !ret.success) {
+                                        return console.error(err, ret);
+                                    }
+                                });
                     });
                 }
 
@@ -200,13 +208,15 @@ function handleResponse(response, sender) {
                                                 pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                                                     let handle = result.rows[0].handle;
                                                     salesforce.sobject('Questionnaire_Answer__c').create({
-                                                        Account__c: handle,
-                                                        Questionnaire__c: salesforce_id,
-                                                        Question_Number__c: answer_no,
-                                                        Score__c: score
-                                                    },
+                                                            Account__c: handle,
+                                                            Questionnaire__c: salesforce_id,
+                                                            Question_Number__c: answer_no,
+                                                            Score__c: score
+                                                        },
                                                         function (err, ret) {
-                                                            if (err || !ret.success) { return console.error(err, ret); }
+                                                            if (err || !ret.success) {
+                                                                return console.error(err, ret);
+                                                            }
                                                         })
                                                 });
                                             }
@@ -239,25 +249,27 @@ function handleResponse(response, sender) {
                                                 if (isDefined(salesforce_id)) {
                                                     pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                                                         let handle = result.rows[0].handle;
-                                                        let numericalSf12Score = sf12Score;          
-                                                        for (let list in sf12Answers) {             
-                                                            if (sf12Answers.hasOwnProperty(list)) {   
+                                                        let numericalSf12Score = sf12Score;
+                                                        for (let list in sf12Answers) {
+                                                            if (sf12Answers.hasOwnProperty(list)) {
                                                                 for (let item of sf12Answers[list]) {
-                                                                    if (item.payload.replace(/\s/g, '') == sf12Score.replace(/\s/g, '')) {
-                                                                        numericalSf12Score = sf12Answers[list].indexOf(item)
+                                                                    if (item.payload.replace(/\s/g, '') === sf12Score.replace(/\s/g, '')) {
+                                                                        numericalSf12Score = sf12Answers[list].indexOf(item);
                                                                     }
                                                                 }
                                                             }
-                                                        }                                                             
+                                                        }
                                                         salesforce.sobject('Questionnaire_Answer__c').create({
-                                                            Account__c: handle,
-                                                            Questionnaire__c: salesforce_id,
-                                                            Question_Number__c: answer_no + 100,
-                                                            Score__c: numericalSf12Score,
-                                                            Answer_Text__c: sf12Score
-                                                        },
+                                                                Account__c: handle,
+                                                                Questionnaire__c: salesforce_id,
+                                                                Question_Number__c: answer_no + 100,
+                                                                Score__c: numericalSf12Score,
+                                                                Answer_Text__c: sf12Score
+                                                            },
                                                             function (err, ret) {
-                                                                if (err || !ret.success) { return console.error(err, ret); }
+                                                                if (err || !ret.success) {
+                                                                    return console.error(err, ret);
+                                                                }
                                                             })
                                                     });
                                                 }
@@ -271,9 +283,12 @@ function handleResponse(response, sender) {
                         break;
 
                     // User wants to start a new questionnare
-                    case "start_vragenlijst":                          
+                    case "start_vragenlijst":
                         if (resolvedQuery !== 'PAM_vragenlijst_start' && resolvedQuery !== 'SF12_vragenlijst_start') {
-                            pool.query({ text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
+                            pool.query({
+                                text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)',
+                                values: [sender, parameters.vragenlijst]
+                            })
                                 .catch(e => console.error(e, e.stack));
                         }
                         break;
@@ -291,13 +306,16 @@ function handleResponse(response, sender) {
                                                 name: list.title
                                             }
                                         }, {
-                                                sessionId: sessionIds.get(sender)
-                                            });
-                                        request.on('response', (response) => { handleResponse(response, sender); });
+                                            sessionId: sessionIds.get(sender)
+                                        });
+                                        request.on('response', (response) => {
+                                            handleResponse(response, sender);
+                                        });
                                         request.on('error', (error) => console.error(error));
 
                                         request.end();
-                                    }).catch(e => console.error(e, e.stack));;
+                                    }).catch(e => console.error(e, e.stack));
+                                ;
                                 wunderlist.createWebhook(connection.access_token, list.id, HOSTNAME + 'webhook/wunderlist/' + sender);
                             });
                         });
@@ -314,7 +332,7 @@ function handleResponse(response, sender) {
                                         if (!error) {
                                             pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
                                                 let fbuser = result.rows[0].handle;
-                                                facebook.sendMessage(fbuser, { text: url });
+                                                facebook.sendMessage(fbuser, {text: url});
                                                 pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
                                                     pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
                                                         .catch(e => console.error(e, e.stack));
@@ -331,14 +349,14 @@ function handleResponse(response, sender) {
                                         if (!error) {
                                             pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
                                                 let fbuser = result.rows[0].handle;
-                                                facebook.sendMessage(fbuser, { text: url });
+                                                facebook.sendMessage(fbuser, {text: url});
                                                 pool.query('DELETE FROM connect_vitadock WHERE client = $1', [sender]).then(() => {
                                                     pool.query('INSERT INTO connect_vitadock (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
                                                         .catch(e => console.error(e, e.stack));
                                                 }).catch(e => console.error(e, e.stack));
                                             });
                                         }
-                                    })
+                                    });
                             }
                         }
                         break;
@@ -356,11 +374,13 @@ function handleResponse(response, sender) {
                                             duration: recipe.duration
                                         }
                                     }, {
-                                            sessionId: sessionIds.get(fbuser),
+                                        sessionId: sessionIds.get(fbuser),
 
-                                        });
+                                    });
 
-                                    request.on('response', (response) => { handleResponse(response, fbuser); });
+                                    request.on('response', (response) => {
+                                        handleResponse(response, fbuser);
+                                    });
                                     request.on('error', (error) => console.error(error));
                                     request.end();
                                 });
@@ -374,14 +394,14 @@ function handleResponse(response, sender) {
                             if (isDefined(connection)) {
                                 pool.query('SELECT id from wunderlist_lists WHERE client = $1', [sender]).then(result => {
                                     if (result.rowCount) {
-                                        addRecipeToList(result.rows[0].id, connection.access_token, recipeState[sender], number)
+                                        addRecipeToList(result.rows[0].id, connection.access_token, recipeState[sender], number);
                                     } else {
                                         wunderlist.createList(connection.access_token).done(list => {
-                                            pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
+                                            pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at]);
                                             addRecipeToList(list.id, connection.access_token, recipeState[sender], number);
                                         });
                                     }
-                                })
+                                });
                             }
                         });
                         break;
@@ -398,11 +418,11 @@ function handleResponse(response, sender) {
                         "title": "Nieuwe lijst",
                         "payload": "Nieuwe lijst"
                     },
-                    {
-                        "content_type": "text",
-                        "title": "Niet nu",
-                        "payload": "Niet nu"
-                    }];
+                        {
+                            "content_type": "text",
+                            "title": "Niet nu",
+                            "payload": "Niet nu"
+                        }];
                 } else if (intentName === 'PAM_vragenlijst_einde') {
                     delete message.quick_replies;
                 }
@@ -415,7 +435,7 @@ function handleResponse(response, sender) {
                     async.eachSeries(splittedText, (textPart, callback) => {
                         message.text = textPart;
                         pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                            let fbuser = result.rows[0].handle;                                     
+                            let fbuser = result.rows[0].handle;
                             facebook.sendMessage(fbuser, message, callback);
                         });
                     });
@@ -424,7 +444,7 @@ function handleResponse(response, sender) {
                 }
             }
 
-            
+
             // Some messages Have a custom payload, we need to handle this payload;
             response.result.fulfillment.messages.forEach(function (message) {
                 let payload = message.payload;
@@ -441,10 +461,12 @@ function handleResponse(response, sender) {
                             let request = apiAiService.eventRequest({
                                 name: followUp
                             }, {
-                                    sessionId: sessionIds.get(fbuser)
-                                });
+                                sessionId: sessionIds.get(fbuser)
+                            });
 
-                            request.on('response', (response) => { handleResponse(response, sender); });
+                            request.on('response', (response) => {
+                                handleResponse(response, sender);
+                            });
                             request.on('error', (error) => console.error(error));
                             request.end();
                         });
@@ -463,10 +485,10 @@ function handleResponse(response, sender) {
 }
 
 function processEvent(event) {
-    var sender = event.sender.id.toString();
+    let sender = event.sender.id.toString();
 
     if ((event.message && event.message.text) || (event.postback && event.postback.payload)) {
-        var text = event.message ? event.message.text : event.postback.payload;
+        let text = event.message ? event.message.text : event.postback.payload;
         // Handle a text message from this sender
 
         if (!sessionIds.has(sender)) {
@@ -478,7 +500,9 @@ function processEvent(event) {
             sessionId: sessionIds.get(sender)
         });
         //receive message from api.ai
-        apiaiRequest.on('response', (response) => { handleResponse(response, sender); });
+        apiaiRequest.on('response', (response) => {
+            handleResponse(response, sender);
+        });
         apiaiRequest.on('error', (error) => console.error('Error: ' + error));
         apiaiRequest.end();
     }
@@ -503,20 +527,20 @@ function splitResponse(str) {
  * @return {array} Array of string chunks
  */
 function chunkString(s, len) {
-    var curr = len,
-        prev = 0;
+    let curr = len;
+    let prev = 0;
 
-    var output = [];
+    let output = [];
 
     while (s[curr]) {
-        if (s[curr++] == ' ') {
+        if (s[curr++] === ' ') {
             output.push(s.substring(prev, curr));
             prev = curr;
             curr += len;
         } else {
-            var currReverse = curr;
+            let currReverse = curr;
             do {
-                if (s.substring(currReverse - 1, currReverse) == ' ') {
+                if (s.substring(currReverse - 1, currReverse) === ' ') {
                     output.push(s.substring(prev, currReverse));
                     prev = currReverse;
                     curr = currReverse + len;
@@ -553,10 +577,12 @@ function sendMeasurementMessage(types, user) {
     let request = apiAiService.eventRequest({
         name: event
     }, {
-            sessionId: sessionIds.get(user)
-        });
+        sessionId: sessionIds.get(user)
+    });
 
-    request.on('response', (response) => { handleResponse(response, user); });
+    request.on('response', (response) => {
+        handleResponse(response, user);
+    });
     request.on('error', (error) => console.error(error));
 
     request.end();
@@ -577,7 +603,7 @@ function getNokiaMeasurements(userid) {
                         if (clientRes.rowCount) {
                             let client = clientRes.rows[0];
                             measureTypes.push(type);
-                            if (user && date && value) {                                        
+                            if (user && date && value) {
                                 if (type === 9) {
                                     pool.query("INSERT INTO measure_blood (client, measure_date, diastolic) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET diastolic = excluded.diastolic", [user.client, date, value]).then(res => {
                                         if (res.rowCount && res.rows[0].salesforce_id) {
@@ -587,7 +613,9 @@ function getNokiaMeasurements(userid) {
                                                     Diastole_Blood_Pressure__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
                                                 }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                    if (err || !ret.success) {
+                                                        return console.error(err, ret);
+                                                    }
                                                 });
                                         } else {
                                             salesforce.sobject('Blood_Pressure_measurement__c')
@@ -595,7 +623,9 @@ function getNokiaMeasurements(userid) {
                                                     Diastole_Blood_Pressure__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
                                                 }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); } else {
+                                                    if (err || !ret.success) {
+                                                        return console.error(err, ret);
+                                                    } else {
                                                         pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
                                                     }
                                                 });
@@ -611,7 +641,9 @@ function getNokiaMeasurements(userid) {
                                                     Systole_Blood_Pressure__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
                                                 }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                    if (err || !ret.success) {
+                                                        return console.error(err, ret);
+                                                    }
                                                 });
                                         } else {
                                             salesforce.sobject('Blood_Pressure_measurement__c')
@@ -619,7 +651,9 @@ function getNokiaMeasurements(userid) {
                                                     Systole_Blood_Pressure__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
                                                 }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); } else {
+                                                    if (err || !ret.success) {
+                                                        return console.error(err, ret);
+                                                    } else {
                                                         pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
                                                     }
                                                 });
@@ -635,7 +669,9 @@ function getNokiaMeasurements(userid) {
                                                     Heartbeat__c: value,
                                                     Date_Time_Measurement__c: Date(date).toISOString()
                                                 }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); }
+                                                    if (err || !ret.success) {
+                                                        return console.error(err, ret);
+                                                    }
                                                 });
                                         } else {
                                             salesforce.sobject('Blood_Pressure_measurement__c')
@@ -643,7 +679,9 @@ function getNokiaMeasurements(userid) {
                                                     Diastole_Blood_Pressure__c: value,
                                                     Heartbeat__c: value
                                                 }, function (err, ret) {
-                                                    if (err || !ret.success) { return console.error(err, ret); } else {
+                                                    if (err || !ret.success) {
+                                                        return console.error(err, ret);
+                                                    } else {
                                                         pool.query("UPDATE measure_blood SET salesforce_id = $1 WHERE client=$2 AND measure_date=$3", [ret.id, user.client, date])
                                                     }
                                                 });
@@ -654,19 +692,21 @@ function getNokiaMeasurements(userid) {
                                     pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
                                     salesforce.sobject('Weight_Measurements__c')
                                         .create({
-                                            Account__c: client.handle,
-                                            Date_Time_Measurement__c: Date(date).toISOString(),
-                                            Value__c: value
-                                        },
-                                        function (err, ret) {
-                                            if (err || !ret.success) { return console.error(err, ret); }
-                                        });
+                                                Account__c: client.handle,
+                                                Date_Time_Measurement__c: Date(date).toISOString(),
+                                                Value__c: value
+                                            },
+                                            function (err, ret) {
+                                                if (err || !ret.success) {
+                                                    return console.error(err, ret);
+                                                }
+                                            });
                                 }
                             }
                         }
                     });
                 });
-            })
+            });
             if (measureTypes.length > 0) {
                 sendMeasurementMessage(measureTypes, user.client);
                 measureTypes.forEach(type => {
@@ -680,7 +720,7 @@ function getNokiaMeasurements(userid) {
                     if (index > -1) {
                         sentTypes.splice(index, 1);
                     }
-                })
+                });
             }
 
             pool.query('UPDATE connect_nokia SET last_update = (SELECT NOW()), sent_message = $1 WHERE client = $2 OR nokia_user = $2', [sentTypes.join(), userid]);
@@ -693,15 +733,19 @@ function getNokiaMeasurements(userid) {
  * @param {string|null} user User id to subscribe to, or null to subscribe to all users
  */
 function subscribeToNokia(user) {
-    let query = { text: 'SELECT * FROM connect_nokia' };
+    let query = {text: 'SELECT * FROM connect_nokia'};
     if (isDefined(user)) {
         query.text += ' WHERE client = $1';
         query.values = [user];
     }
     pool.query(query).then(res => {
         res.rows.forEach(row => {
-            nokia.subscribe(row.nokia, row.oauth_access_token, row.oauth_access_secret, 1, (error, responseData) => { if (error) console.log(error); });
-            nokia.subscribe(row.nokia, row.oauth_access_token, row.oauth_access_secret, 4, (error, responseData) => { if (error) console.log(error); });
+            nokia.subscribe(row.nokia, row.oauth_access_token, row.oauth_access_secret, 1, (error, responseData) => {
+                if (error) console.log(error);
+            });
+            nokia.subscribe(row.nokia, row.oauth_access_token, row.oauth_access_secret, 4, (error, responseData) => {
+                if (error) console.log(error);
+            });
 
             // Get measurements, so that we have current data and don't have to wait for a new measurement to be made to be up to date
             getNokiaMeasurements(row.client);
@@ -716,9 +760,30 @@ function subscribeToWunderlist() {
     pool.query("SELECT connect_wunderlist.client, connect_wunderlist.access_token, wunderlist_lists.id FROM wunderlist_lists LEFT JOIN connect_wunderlist ON wunderlist_lists.client = connect_wunderlist.client").then(result => {
         result.rows.forEach(row => {
             wunderlist.createWebhook(row.access_token, row.id, HOSTNAME + 'webhook/wunderlist/' + row.client);
-        })
-    })
+        });
+    });
 }
+
+function syncAlterdeskChats() {
+    alterdesk.get('groupchats', (success, json) => {
+        let groupschats = JSON.parse(json);
+        for (let groupchat in groupchats) {
+            let user = getOrRegisterUser(groupchat.id, 'AD');
+            let webhookData = {
+                'event_name': 'groupchat_new_message',
+                'headers' : {},
+                'method': 'GET',
+                'url': HOSTNAME + 'webhook/alterdesk/' + groupchat.id
+            };
+            alterdesk.post('groupchats/' + groupchat.id + '/hooks', JSON.stringify(webhookData), (success, json) => {
+                let data = JSON.parse(json);
+                if (!success) {
+                    console.log(data.message);
+                }
+            })
+        }
+    });
+};
 
 
 /**
@@ -727,7 +792,7 @@ function subscribeToWunderlist() {
  * @returns {boolean} True if defined an thruthy, false if not defined or falsy
  */
 function isDefined(obj) {
-    if (typeof obj == 'undefined') {
+    if (typeof obj === 'undefined') {
         return false;
     }
 
@@ -735,20 +800,33 @@ function isDefined(obj) {
         return false;
     }
 
-    return obj != null;
+    return obj !== null;
 }
+
+function getProfile(handle, type, callback) {
+    switch(type) {
+        case 'FB':
+            facebook.getProfile(handle, type, callback);
+            break;
+        case 'AD':
+            alterdesk.get():
+            break;
+    }
+};
 
 function createNewClient(handle, type) {
     let id = uuid.v4();
     return pool.query("INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))", [id, handle, type])
         .then(res => {
-            facebook.getProfile(handle, (profile) => {
+            getProfile(handle, type, (profile) => {
                 salesforce.sobject('Account').create({
                     name: profile.first_name + ' ' + profile.last_name,
                     RecordTypeId: '0120Y0000015YRyQAM',
                     GUID__c: id
                 }, function (err, ret) {
-                    if (err || !ret.success) { return console.error(err, ret); }
+                    if (err || !ret.success) {
+                        return console.error(err, ret);
+                    }
                     pool.query('INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))', [id, ret.id, 'SF'])
                 });
             });
@@ -757,9 +835,10 @@ function createNewClient(handle, type) {
 }
 
 function getOrRegisterUser(handle, type) {
+    type = type || 'FB';
     return pool.query("SELECT * FROM clients WHERE handle = $1 or id = $1", [handle]).then(res => {
         if (!res.rowCount) {
-            return createNewClient(handle, 'FB');
+            return createNewClient(handle, type);
         } else {
             return res.rows[0].id;
         }
@@ -783,7 +862,7 @@ function addRecipeToList(list, accessToken, recipe, number) {
                     item += ' ' + row.unit;
                 }
             }
-            item += ' ' + row.name   
+            item += ' ' + row.name;
 
             wunderlist.createTask(list, accessToken, item);
         });
@@ -798,63 +877,72 @@ function getVitaDockData(client, types) {
             let handle = result.rows[0].handle;
             for (let type of types) {
                 vitadock.getData(userOAuth.oauth_access_token, userOAuth.oauth_access_secret, type, Math.round(userOAuth.time * 1000), (error, data) => {
-                    if (error) { console.log(error); return; }
+                    if (error) {
+                        console.log(error);
+                        return;
+                    }
                     for (let item of data) {
                         let date = new Date(item.measurementDate);
                         if (type === 0) {
                             salesforce.sobject('Blood_Pressure_Measurement__c').create({
-                                Account__c: handle,
-                                Diastole_Blood_Pressure__c: item.diastole,
-                                Systole_Blood_Pressure__c: item.systole,
-                                Heartbeat__c: item.pulse,
+                                    Account__c: handle,
+                                    Diastole_Blood_Pressure__c: item.diastole,
+                                    Systole_Blood_Pressure__c: item.systole,
+                                    Heartbeat__c: item.pulse,
 
-                                Date_Time_Measurement__c: date.toISOString(),
-                            },
+                                    Date_Time_Measurement__c: date.toISOString(),
+                                },
                                 function (err, ret) {
-                                    if (err || !ret.success) { return console.error(err, ret); }
+                                    if (err || !ret.success) {
+                                        return console.error(err, ret);
+                                    }
                                 });
                         }
                         else if (type === 1) {
                             salesforce.sobject('Glucose_Measurement__c').create({
-                                Account__c: handle,
-                                Blood_Glucose__c: item.bloodGlucose,
-                                Date_Time_Measurement__c: date.toISOString(),
-                            },
+                                    Account__c: handle,
+                                    Blood_Glucose__c: item.bloodGlucose,
+                                    Date_Time_Measurement__c: date.toISOString(),
+                                },
                                 function (err, ret) {
-                                    if (err || !ret.success) { return console.error(err, ret); }
+                                    if (err || !ret.success) {
+                                        return console.error(err, ret);
+                                    }
                                 });
                         } else if (type === 4) {
                             salesforce.sobject('Weight_Measurements__c').create({
-                                Account__c: handle,
-                                Value__c: item.bodyWeight,
-                                BMI__c: item.bmi,
-                                Body_Fat_Percentage__c: item.bodyFat,
-                                Body_Water_Percentage__c: item.bodyWater,
-                                Bone_Mass_Percentage__c: item.boneMass,
-                                Muscle_Mass_Percentage__c: item.muscleMass,
-                                Date_Time_Measurement__c: date.toISOString(),
-                            },
+                                    Account__c: handle,
+                                    Value__c: item.bodyWeight,
+                                    BMI__c: item.bmi,
+                                    Body_Fat_Percentage__c: item.bodyFat,
+                                    Body_Water_Percentage__c: item.bodyWater,
+                                    Bone_Mass_Percentage__c: item.boneMass,
+                                    Muscle_Mass_Percentage__c: item.muscleMass,
+                                    Date_Time_Measurement__c: date.toISOString(),
+                                },
                                 function (err, ret) {
-                                    if (err || !ret.success) { return console.error(err, ret); }
+                                    if (err || !ret.success) {
+                                        return console.error(err, ret);
+                                    }
                                 });
                         }
                     }
                 });
             }
             pool.query('UPDATE connect_vitadock SET last_update = (SELECT NOW()) WHERE client = $1', [client]);
-        })
+        });
     });
 }
 
 function queryStringToJSON(str, sep) {
-    sep = sep || '&'
-    var pairs = str.split(sep);
-    var result = {};
+    sep = sep || '&';
+    let pairs = str.split(sep);
+    let result = {};
     pairs.forEach(function (pair) {
         pair = pair.split('=');
-        var name = pair[0]
-        var value = pair[1]
-        if (name.length)
+        let name = pair[0];
+        let value = pair[1];
+        if (name.length) {
             if (result[name] !== undefined) {
                 if (!result[name].push) {
                     result[name] = [result[name]];
@@ -863,6 +951,7 @@ function queryStringToJSON(str, sep) {
             } else {
                 result[name] = value || '';
             }
+        }
     });
     return (result);
 }
@@ -879,7 +968,7 @@ app.use(bodyParser.urlencoded({
 app.use(bodyParser.json()); //toegevoegd: corrigeert de werking weer
 app.use(cookieParser());
 
-var debugtekst = "";
+let debugtekst = "";
 
 app.use('/static', express.static(path.resolve(__dirname, '../public')));
 app.use('/portal', require('./portal'));
@@ -907,7 +996,7 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                     (error, oAuthToken, oAuthTokenSecret, results) => {
                         if (error) {
                             console.log(error);
-                            response.end(JSON.stringify({
+                            res.end(JSON.stringify({
                                 message: 'Error occured while getting access token',
                                 error: error
                             }));
@@ -925,19 +1014,21 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                                 let request = apiAiService.eventRequest({
                                     name: 'nokia_connected'
                                 }, {
-                                        sessionId: sessionIds.get(handle)
-                                    });
+                                    sessionId: sessionIds.get(handle)
+                                });
 
-                                request.on('response', (response) => { handleResponse(response, client); });
+                                request.on('response', (response) => {
+                                    handleResponse(response, client);
+                                });
                                 request.on('error', (error) => console.error(error));
 
                                 request.end();
                                 subscribeToNokia(client);
-                            })
+                            });
                         });
 
                     });
-            })
+            });
         return res.status(200).json({
             status: "ok"
         });
@@ -952,7 +1043,7 @@ app.get('/connect/nokia/:clientId', (req, res) => {
 
 // Page a user is sent to by Paula to connect to Wunderlist. Redirects to the wunderlist Login page
 app.get('/connect/wunderlist/:clientId', (req, res) => {
-    res.cookie('client', req.params.clientId, { maxAge: 1000 * 60 * 15, httpOnly: true })
+    res.cookie('client', req.params.clientId, {maxAge: 1000 * 60 * 15, httpOnly: true})
         .redirect(wunderlist.getAuthUri());
 });
 
@@ -971,16 +1062,20 @@ app.get('/connect/wunderlist/', (req, res) => {
                         let request = apiAiService.eventRequest({
                             name: 'wunderlist_connected'
                         }, {
-                                sessionId: sessionIds.get(user)
-                            });
+                            sessionId: sessionIds.get(user)
+                        });
 
-                        request.on('response', (response) => { handleResponse(response, user); });
+                        request.on('response', (response) => {
+                            handleResponse(response, user);
+                        });
                         request.on('error', (error) => console.error(error));
 
                         request.end();
 
                         res.status(200).send();
-                    }, (err) => { res.status(400).json(err); });
+                    }, (err) => {
+                        res.status(400).json(err);
+                    });
             });
     } catch (err) {
         return res.status(400).json({
@@ -1006,7 +1101,7 @@ app.get('/connect/vitadock', (req, res) => {
                     (error, oAuthRequestToken, oAuthRequestTokenSecret) => {
                         if (error) {
                             console.log(error);
-                            response.end(JSON.stringify({
+                            res.end(JSON.stringify({
                                 message: 'Error occured while getting access token',
                                 error: error
                             }));
@@ -1024,10 +1119,12 @@ app.get('/connect/vitadock', (req, res) => {
                                 let request = apiAiService.eventRequest({
                                     name: 'vitadock_connected'
                                 }, {
-                                        sessionId: sessionIds.get(handle)
-                                    });
+                                    sessionId: sessionIds.get(handle)
+                                });
 
-                                request.on('response', (response) => { handleResponse(response, client); });
+                                request.on('response', (response) => {
+                                    handleResponse(response, client);
+                                });
                                 request.on('error', (error) => console.error(error));
 
                                 request.end();
@@ -1036,7 +1133,7 @@ app.get('/connect/vitadock', (req, res) => {
                         });
 
                     });
-            })
+            });
         return res.status(200).json({
             status: "ok"
         });
@@ -1050,11 +1147,11 @@ app.get('/connect/vitadock', (req, res) => {
 
 // Facebook API webhook
 app.get('/webhook/', (req, res) => {
-    if (req.query['hub.verify_token'] == FB_VERIFY_TOKEN) {
+    if (req.query['hub.verify_token'] === FB_VERIFY_TOKEN) {
         res.send(req.query['hub.challenge']);
 
         setTimeout(() => {
-            doSubscribeRequest();
+            facebook.doSubscribeRequest();
         }, 5000);
     } else {
         res.send('Error, wrong validation token');
@@ -1095,6 +1192,11 @@ app.post('/webhook/', (req, res) => {
 
 });
 
+app.get('webhook/altedesk/:groupid', (req, res) => {
+    console.log(req);
+    return res.status(200);
+});
+
 // Scheduler Webhook
 app.post('/webhook/scheduler', (req, res) => {
     // Get last measurements from a user, if their last measurement for that type is longer then a week ago.
@@ -1103,54 +1205,56 @@ app.post('/webhook/scheduler', (req, res) => {
         'UNION ALL ' +
         '(SELECT distinct on (client) measure_weight.client, \'weight\' as measurement_type, measure_date, sent_message FROM measure_weight LEFT JOIN connect_nokia ON measure_weight.client = connect_nokia.client ORDER BY client, measure_date DESC)' +
         ') as latest_records WHERE measure_date < (CURRENT_DATE - INTERVAL \'1 week\')').then(result => {
-            let send = {}
-            result.rows.forEach(row => {
-                // Define what messages we need to send
-                let user = row.client;
-                let sent = isDefined(row.sent_message) ? row.sent_message.split(',') : [];
-                let type = row.measurement_type;
-                if (!(user in send)) {
-                    send[user] = []
-                }
-                // Don't send a message if we've already sent one for this measurement
-                if (!sent.includes(type)) {
-                    send[user].push(type);
-                }
-            });
-            for (let user in send) {
-                if (!send.hasOwnProperty(user)) continue;
-
-                if (!sessionIds.has(user)) {
-                    sessionIds.set(user, uuid.v1());
-                }
-
-                send[user].forEach(type => {
-                    pool.query('SELECT registration_date FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
-                        .then(res => {
-                            if (res.rowCount > 0) {
-                                let request = apiAiService.eventRequest({
-                                    name: 'old_measurement_' + type
-                                }, {
-                                        sessionId: sessionIds.get(user)
-                                    });
-                                request.on('response', (response) => { handleResponse(response, user); });
-                                request.on('error', (error) => console.error(error));
-                                request.end();
-
-                                pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
-                                    let userRecord = result.rows[0];
-                                    let sentTypes = userRecord.sent_message.split(',');
-                                    if (!sentTypes.includes(type)) {
-                                        sentTypes.push(type);
-                                    }
-                                    pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
-                                });
-                            }
-                        });
-                });
+        let send = {}
+        result.rows.forEach(row => {
+            // Define what messages we need to send
+            let user = row.client;
+            let sent = isDefined(row.sent_message) ? row.sent_message.split(',') : [];
+            let type = row.measurement_type;
+            if (!(user in send)) {
+                send[user] = []
+            }
+            // Don't send a message if we've already sent one for this measurement
+            if (!sent.includes(type)) {
+                send[user].push(type);
             }
         });
-    res.status(200).send()
+        for (let user in send) {
+            if (!send.hasOwnProperty(user)) continue;
+
+            if (!sessionIds.has(user)) {
+                sessionIds.set(user, uuid.v1());
+            }
+
+            send[user].forEach(type => {
+                pool.query('SELECT registration_date FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
+                    .then(res => {
+                        if (res.rowCount > 0) {
+                            let request = apiAiService.eventRequest({
+                                name: 'old_measurement_' + type
+                            }, {
+                                sessionId: sessionIds.get(user)
+                            });
+                            request.on('response', (response) => {
+                                handleResponse(response, user);
+                            });
+                            request.on('error', (error) => console.error(error));
+                            request.end();
+
+                            pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
+                                let userRecord = result.rows[0];
+                                let sentTypes = userRecord.sent_message.split(',');
+                                if (!sentTypes.includes(type)) {
+                                    sentTypes.push(type);
+                                }
+                                pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
+                            });
+                        }
+                    });
+            });
+        }
+    });
+    res.status(200).send();
 });
 
 // NOKIA Health Webhook
@@ -1183,7 +1287,7 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
         let item = body.after.title;
         let created_at = body.after.created_at;
         let completed_at = body.after.completed_at;
-        let completed = body.after.completed;             
+        let completed = body.after.completed;
 
         switch (operation) {
             case 'create':
@@ -1212,7 +1316,7 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
 });
 
 app.post('/webhook/salesforce', (req, res) => {
-    let body = JSON.parse(req.body); 
+    let body = JSON.parse(req.body);
 
     let user = body.UID;
     let intent = body.Intent;
@@ -1236,10 +1340,12 @@ app.post('/webhook/salesforce', (req, res) => {
                             let request = apiAiService.eventRequest({
                                 name: intent,
                             }, {
-                                    sessionId: sessionIds.get(handle)
-                                });
+                                sessionId: sessionIds.get(handle)
+                            });
 
-                            request.on('response', (response) => { handleResponse(response, handle); });
+                            request.on('response', (response) => {
+                                handleResponse(response, handle);
+                            });
                             request.on('error', (error) => console.error(error));
 
                             if (isDefined(questionnaire)) {
@@ -1255,9 +1361,9 @@ app.post('/webhook/salesforce', (req, res) => {
                             request.end();
                             res.status(200).send();
                         } else if (isDefined(response) && isDefined(subject)) {
-                            facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
+                            facebook.sendMessage(handle, {text: 'Je vroeg "' + subject + '"'},
                                 () => {
-                                    facebook.sendMessage(handle, { text: response });
+                                    facebook.sendMessage(handle, {text: response});
                                 });
                             res.sendStatus(200);
                         } else {
@@ -1279,7 +1385,7 @@ app.post('/webhook/salesforce', (req, res) => {
 
 app.all('/webhook/vitadock', (req, res) => {
     if (req.query.module_id === '0' || req.query.module_id === '1' || req.query.module_id === '4') {
-        let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');    
+        let authorization = queryStringToJSON(req.headers.authorization.substr(6), ',');
         pool.query('SELECT client FROM connect_vitadock WHERE oauth_access_token = $1', [JSON.parse(authorization.oauth_token)]).then(result => {
             getVitaDockData(result.rows[0].client, [JSON.parse(req.query.module_id)]);
         });
@@ -1293,7 +1399,9 @@ app.listen(REST_PORT, () => {
 
 
 salesforce.login(SALESFORCE_USER, SALESFORCE_PASSWORD, (err, userInfo) => {
-    if (err) { return console.error(err); }
+    if (err) {
+        return console.error(err);
+    }
     // Subscribe to the facebook API
     facebook.doSubscribeRequest();
     // Subscribe to all Nokia Users
