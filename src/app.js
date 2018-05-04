@@ -34,7 +34,7 @@ const VITADOCK_API_TOKEN = process.env.VITADOCK_API_TOKEN;
 const VITADOCK_API_SECRET = process.env.VITADOCK_API_SECRET;
 const SALESFORCE_USER = process.env.SALESFORCE_USER;
 const SALESFORCE_PASSWORD = process.env.SALESFORCE_PASSWORD;
-const ALTERDESK_API_TOKEN = process.env.ALTERDESK_TOKEN;
+const ALTERDESK_API_TOKEN = process.env.ALTERDESK_API_TOKEN;
 const HOSTNAME = process.env.HOSTNAME;
 const DEFAULT_INTENT_REFER_TO = process.env.DEFAULT_INTENT_REFER_TO;
 const DEFAULT_INTENTS = ['57b82498-053c-4776-8be9-228c420e6c13', 'b429ecdc-21f4-4a07-8165-3620023185ba'];
@@ -741,20 +741,24 @@ function subscribeToNokia(user) {
     pool.query(query).then(res => {
         res.rows.forEach(row => {
             nokia.subscribe(row.nokia, row.oauth_access_token, row.oauth_access_secret, 1, (error, responseData) => {
-                if (error) console.log(error);
+                if (error) {
+                    console.log(error);
+                }
             });
             nokia.subscribe(row.nokia, row.oauth_access_token, row.oauth_access_secret, 4, (error, responseData) => {
-                if (error) console.log(error);
+                if (error) {
+                    console.log(error);
+                }
             });
 
             // Get measurements, so that we have current data and don't have to wait for a new measurement to be made to be up to date
             getNokiaMeasurements(row.client);
         });
-    })
+    });
 }
 
 /**
- * Subscribes to all Wunderlist lists.
+ * Subscribes to all Wunderlist lists that are currently known and stored in the database.
  */
 function subscribeToWunderlist() {
     pool.query("SELECT connect_wunderlist.client, connect_wunderlist.access_token, wunderlist_lists.id FROM wunderlist_lists LEFT JOIN connect_wunderlist ON wunderlist_lists.client = connect_wunderlist.client").then(result => {
