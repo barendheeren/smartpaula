@@ -1201,7 +1201,7 @@ app.post('/webhook/', (req, res) => {
 
 app.get('/webhook/alterdesk/:groupid', (req, res) => {
     console.log(req);
-    return res.status(200);
+    res.status(200).send();
 });
 
 // Scheduler Webhook
