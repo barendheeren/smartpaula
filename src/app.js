@@ -1406,6 +1406,8 @@ salesforce.login(SALESFORCE_USER, SALESFORCE_PASSWORD, (err, userInfo) => {
     facebook.doSubscribeRequest();
     // Subscribe to all Nokia Users
     subscribeToNokia();
-    //Subscribe to all Wunderlist lists
+    // Subscribe to all Wunderlist lists
     subscribeToWunderlist();
+    // Sync Alterdesk chats
+    syncAlterdeskChats();
 });
