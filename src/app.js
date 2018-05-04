@@ -769,9 +769,8 @@ function subscribeToWunderlist() {
 }
 
 function syncAlterdeskChats() {
-    alterdesk.get('groupchats', (success, json) => {
-        let groupchats = JSON.parse(json);
-        for (let groupchat in groupchats) {
+    alterdesk.get('groupchats', (success, result) => {
+        for (let groupchat in result) {
             let user = getOrRegisterUser(groupchat.id, 'AD');
             let webhookData = {
                 'event_name': 'groupchat_new_message',
@@ -1165,7 +1164,7 @@ app.get('/webhook/', (req, res) => {
 // Facebook API webhook
 app.post('/webhook/', (req, res) => {
     try {
-        var data = JSONbig.parse(req.body);
+        let data = JSONbig.parse(req.body);
 
         if (data.entry) {
             let entries = data.entry;
@@ -1209,14 +1208,14 @@ app.post('/webhook/scheduler', (req, res) => {
         'UNION ALL ' +
         '(SELECT distinct on (client) measure_weight.client, \'weight\' as measurement_type, measure_date, sent_message FROM measure_weight LEFT JOIN connect_nokia ON measure_weight.client = connect_nokia.client ORDER BY client, measure_date DESC)' +
         ') as latest_records WHERE measure_date < (CURRENT_DATE - INTERVAL \'1 week\')').then(result => {
-        let send = {}
+        let send = {};
         result.rows.forEach(row => {
             // Define what messages we need to send
             let user = row.client;
             let sent = isDefined(row.sent_message) ? row.sent_message.split(',') : [];
             let type = row.measurement_type;
             if (!(user in send)) {
-                send[user] = []
+                send[user] = [];
             }
             // Don't send a message if we've already sent one for this measurement
             if (!sent.includes(type)) {
