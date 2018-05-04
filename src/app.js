@@ -779,22 +779,26 @@ function syncAlterdeskChats() {
                 'method': 'GET',
                 'url': HOSTNAME + 'webhook/alterdesk/' + groupchat.id
             };
-            alterdesk.post('groupchats/' + groupchat.id + '/hooks', JSON.stringify(webhookData), (success, result) => {
-                if (!success) {
-                    console.log(result.message);
-                } else {
-                    console.log(result);
-                }
-            });
+            try {
+                alterdesk.post('groupchats/' + groupchat.id + '/hooks', JSON.stringify(webhookData), (success, result) => {
+                    if (!success) {
+                        console.log(result.message);
+                    } else {
+                        console.log(result);
+                    }
+                });
+            } catch (e) {
+                console.log('Error while creating webhook for Alterdesk groupchat ' + groupchat.id + ': ' + e);
+            }
         }
     });
-};
+}
 
 
 /**
  * Checks if an object is either undefined or falsy
  * @param {any} obj Object to check
- * @returns {boolean} True if defined an thruthy, false if not defined or falsy
+ * @returns {boolean} True if defined and thruthy, false if not defined or falsy
  */
 function isDefined(obj) {
     if (typeof obj === 'undefined') {
@@ -817,7 +821,7 @@ function getProfile(handle, type, callback) {
             alterdesk.get();
             break;
     }
-};
+}
 
 function createNewClient(handle, type) {
     let id = uuid.v4();
