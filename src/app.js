@@ -766,7 +766,7 @@ function subscribeToWunderlist() {
 
 function syncAlterdeskChats() {
     alterdesk.get('groupchats', (success, json) => {
-        let groupschats = JSON.parse(json);
+        let groupchats = JSON.parse(json);
         for (let groupchat in groupchats) {
             let user = getOrRegisterUser(groupchat.id, 'AD');
             let webhookData = {
