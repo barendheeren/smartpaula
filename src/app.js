@@ -779,10 +779,11 @@ function syncAlterdeskChats() {
                 'method': 'GET',
                 'url': HOSTNAME + 'webhook/alterdesk/' + groupchat.id
             };
-            alterdesk.post('groupchats/' + groupchat.id + '/hooks', JSON.stringify(webhookData), (success, json) => {
-                let data = JSON.parse(json);
+            alterdesk.post('groupchats/' + groupchat.id + '/hooks', JSON.stringify(webhookData), (success, result) => {
                 if (!success) {
-                    console.log(data);
+                    console.log(result.message);
+                } else {
+                    console.log(result);
                 }
             });
         }
