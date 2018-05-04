@@ -1199,7 +1199,7 @@ app.post('/webhook/', (req, res) => {
 
 });
 
-app.get('webhook/alterdesk/:groupid', (req, res) => {
+app.get('/webhook/alterdesk/:groupid', (req, res) => {
     console.log(req);
     return res.status(200);
 });
