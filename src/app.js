@@ -809,7 +809,7 @@ function getProfile(handle, type, callback) {
             facebook.getProfile(handle, type, callback);
             break;
         case 'AD':
-            alterdesk.get():
+            alterdesk.get();
             break;
     }
 };
