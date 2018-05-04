@@ -771,7 +771,6 @@ function subscribeToWunderlist() {
 function syncAlterdeskChats() {
     alterdesk.get('groupchats', (success, result) => {
         for (let groupchat of result) {
-            console.log(groupchat);
             let user = getOrRegisterUser(groupchat.id, 'AD');
             let webhookData = {
                 'event_name': 'groupchat_new_message',
@@ -1200,7 +1199,7 @@ app.post('/webhook/', (req, res) => {
 
 });
 
-app.get('webhook/altedesk/:groupid', (req, res) => {
+app.get('webhook/alterdesk/:groupid', (req, res) => {
     console.log(req);
     return res.status(200);
 });
