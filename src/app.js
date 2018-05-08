@@ -774,7 +774,7 @@ function syncAlterdeskChats() {
             let user = getOrRegisterUser(groupchat.id, 'AD');
             let webhookData = {
                 'event_name': 'groupchat_new_message',
-                'method': 'GET',
+                'method': 'POST',
                 'url': HOSTNAME + 'webhook/alterdesk/' + groupchat.id
             };
             alterdesk.http(alterdesk.apiUrl + 'groupchats/' + groupchat.id + '/hooks')
