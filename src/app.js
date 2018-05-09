@@ -1199,8 +1199,24 @@ app.post('/webhook/', (req, res) => {
 });
 
 app.post('/webhook/alterdesk/:groupid', (req, res) => {
-    console.log(req);
-    res.status(200).send();
+    try {
+        let data = JSONbig.parse(req.body);
+        let groupchat_id = data.groupchat_id;
+        let message_id = data.message;
+        alterdesk.get('/groupchats/'+ groupchat_id + '/messages/' + message_id, function(success, result) {
+            if (result != null){
+                let message = result.body;
+                console.log(message)
+            }
+        } );
+        console.log(req);
+        res.status(200).send();
+    } catch (err) {
+        return res.status(400).json({
+            status: "error",
+            error: err
+        });
+    }
 });
 
 // Scheduler Webhook
