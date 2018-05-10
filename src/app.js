@@ -1206,7 +1206,7 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
     try {
         let data = req.body;
         let groupchat_id = data.groupchat_id;
-        let message_id = data.message;
+        let message_id = data.message_id;
         console.log(data);
         alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
             console.log(result);
