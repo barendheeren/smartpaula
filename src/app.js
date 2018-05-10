@@ -413,10 +413,9 @@ function handleResponse(response, sender, callback) {
             }
 
             if (isDefined(responseText)) {
-                callback(responseText);
+                callback(message);
             }
         }
-
 
         // Some messages Have a custom payload, we need to handle this payload;
         response.result.fulfillment.messages.forEach(function (message) {
