@@ -1207,6 +1207,7 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
         let message_id = data.message_id;
         pool.query('SELECT COUNT(*) FROM alterdesk_messages_handled WHERE message_id = $1', [message_id])
             .then((result) => {
+                console.log(result);
                 if(result.rows[0].count > 0) {
                     pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]);
                     alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
