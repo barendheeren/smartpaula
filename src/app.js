@@ -1226,9 +1226,8 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
                         error: err
                     });
                 });
-        } else {
-            res.status(200).send();
         }
+        res.status(200).send();
     } catch (err) {
         return res.status(500).json({
             status: "error",
