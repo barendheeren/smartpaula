@@ -184,7 +184,7 @@ passport.use('local-login', new LocalStrategy({
 const app = express();
 
 app.use(cookieParser());
-app.use(bodyParser());
+app.use(bodyParser.urlencoded({extended: false}));
 
 app.set('view engine', 'pug');
 

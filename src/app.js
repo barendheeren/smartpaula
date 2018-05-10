@@ -975,7 +975,9 @@ app.use(bodyParser.text({
 app.use(bodyParser.urlencoded({
     extended: false
 })); //toegevoegd: heeft invloed verwerking event
-app.use(bodyParser.json()); //toegevoegd: corrigeert de werking weer
+app.use(bodyParser.json({
+    extended: true
+}));
 app.use(cookieParser());
 
 let debugtekst = "";
