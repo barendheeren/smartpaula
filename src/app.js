@@ -483,8 +483,6 @@ function processAlterDeskEvent(groupchat, event) {
             messageData.chatId = groupchat;
             messageData.isGroup = true;
 
-            console.log(message, messageData);
-
             alterdesk.sendMessage(messageData, () => {});
 
         });
@@ -1207,15 +1205,27 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
         let data = req.body;
         let groupchat_id = data.groupchat_id;
         let message_id = data.message_id;
-        alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
-            console.log(result);
-            if (result !== null) {
-                processAlterDeskEvent(groupchat_id, result);
-            }
-        });
-        res.status(200).send();
+        pool.query('SELECT COUNT(*) FROM alterdesk_messages_handled WHERE message_id = $1', [message_id])
+            .then((result) => {
+                if(result.rows[0].count > 0) {
+                    pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]);
+                    alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
+                        console.log(result);
+                        if (result !== null) {
+                            processAlterDeskEvent(groupchat_id, result);
+                        }
+                    });
+                }
+                res.status(200).send();
+            })
+            .catch(err => {
+                return res.status(500).json({
+                status: "error",
+                error: err
+            });
+
     } catch (err) {
-        return res.status(400).json({
+        return res.status(500).json({
             status: "error",
             error: err
         });
