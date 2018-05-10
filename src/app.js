@@ -8,7 +8,7 @@ const uuid = require('node-uuid');
 const request = require('request');
 const JSONbig = require('json-bigint');
 const async = require('async');
-const {Pool, Client} = require('pg');
+const { Pool, Client } = require('pg');
 const util = require('util');
 const path = require('path');
 const cookieParser = require('cookie-parser');
@@ -41,7 +41,7 @@ const DEFAULT_INTENTS = ['57b82498-053c-4776-8be9-228c420e6c13', 'b429ecdc-21f4-
 const VIEWS = __dirname + '/views/';
 
 /** @const {Pool} Postgres connection pool */
-const pool = new Pool({connectionString: process.env.DATABASE_URL});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 /** @const {Apiai} API.AI interface */
 const apiAiService = apiai(APIAI_ACCESS_TOKEN, {
@@ -63,10 +63,10 @@ const vitadock = new Vitadock(VITADOCK_API_TOKEN, VITADOCK_API_SECRET);
 
 /** @const {Alterdesk.Api} Alterdest API interface **/
 const alterdesk = new Alterdesk.Api();
+alterdesk.configure(ALTERDESK_API_TOKEN);
 
 /** @const {jsforce} Salesforce API interface */
 const salesforce = new jsforce.Connection();
-alterdesk.configure(ALTERDESK_API_TOKEN);
 
 /** @const {Map} Map of existing API.AI session ID's */
 const sessionIds = new Map();
@@ -78,8 +78,9 @@ let recipeState = {};
  * Handling includes e.g. database operations that should occur as a result of a previous message.
  * @param {object} response A valid API.AI response
  * @param {number} sender A Facebook ID to respond to.
+ * @param {function} callback function, called with the response message 
  */
-function handleResponse(response, sender) {
+function handleResponse(response, sender, callback) {
     if (isDefined(response.result)) {
         let /** string */ responseText = response.result.fulfillment.speech;
         let /** object */ responseData = response.result.fulfillment.data;
@@ -95,124 +96,177 @@ function handleResponse(response, sender) {
 
         facebook.sendSenderAction(sender, 'typing_on');
 
-        getOrRegisterUser(sender, 'FB').then(sender => {
-            if (parameters.feedback) {
-                let feedback = parameters.feedback === '👍' ? '+' : '-';
-                pool.query('UPDATE log SET feedback = $1 WHERE client = $2 AND time = (select max(time) FROM log WHERE client = $2)', [feedback, sender]);
-            } else {
-                logAction(sender, intent, parameters);
-            }
 
-            if (isDefined(responseData) && isDefined(responseData.facebook)) {
-                // If the response is specifically a facebook message, send it directly to the user.
-                // (Is this ever used?)
-                if (!Array.isArray(responseData.facebook)) {
+        if (parameters.feedback) {
+            let feedback = parameters.feedback === '👍' ? '+' : '-';
+            pool.query('UPDATE log SET feedback = $1 WHERE client = $2 AND time = (select max(time) FROM log WHERE client = $2)', [feedback, sender]);
+        } else {
+            logAction(sender, intent, parameters);
+        }
+
+        if (isDefined(responseData) && isDefined(responseData.facebook)) {
+            // If the response is specifically a facebook message, send it directly to the user.
+            // (Is this ever used?)
+            if (!Array.isArray(responseData.facebook)) {
+                try {
+                    console.log('Response as formatted message');
+                    facebook.sendMessage(sender, responseData.facebook + ' geformatteerd bericht');
+                } catch (err) {
+                    facebook.sendMessage(sender, {
+                        text: err.message
+                    });
+                }
+            } else {
+                responseData.facebook.forEach((facebookMessage) => {
                     try {
-                        console.log('Response as formatted message');
-                        facebook.sendMessage(sender, responseData.facebook + ' geformatteerd bericht');
+                        if (facebookMessage.sender_action) {
+                            console.log('Response as sender action');
+                            facebook.sendSenderAction(sender, facebookMessage.sender_action);
+                        } else {
+                            console.log('Response as formatted message');
+                            facebook.sendMessage(sender, facebookMessage);
+                        }
                     } catch (err) {
                         facebook.sendMessage(sender, {
                             text: err.message
                         });
                     }
-                } else {
-                    responseData.facebook.forEach((facebookMessage) => {
-                        try {
-                            if (facebookMessage.sender_action) {
-                                console.log('Response as sender action');
-                                facebook.sendSenderAction(sender, facebookMessage.sender_action);
-                            } else {
-                                console.log('Response as formatted message');
-                                facebook.sendMessage(sender, facebookMessage);
+                });
+            }
+        } else {
+            let message = {
+                text: responseText
+            };
+            /**
+             * These are the standard questionnare responses
+             * @type {Array}
+             */
+            let quickReplies = [{
+                "content_type": "text",
+                "title": "😁",
+                "payload": "4"
+            },
+            {
+                "content_type": "text",
+                "title": "🙂",
+                "payload": "3"
+            },
+            {
+                "content_type": "text",
+                "title": "😞",
+                "payload": "2"
+            },
+            {
+                "content_type": "text",
+                "title": "😡",
+                "payload": "1"
+            },
+            {
+                "content_type": "text",
+                "title": "N.v.t",
+                "payload": "0"
+            }
+            ];
+            console.log('Response as text message');
+
+            // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
+            if (DEFAULT_INTENTS.includes(intent)) {
+                pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
+                    let handle = result.rows[0].handle;
+                    salesforce.sobject('Case')
+                        .create({
+                            AccountId: handle,
+                            Status: 'New',
+                            Origin: 'Smart Susan',
+                            Subject: resolvedQuery,
+                        },
+                        function (err, ret) {
+                            if (err || !ret.success) {
+                                return console.error(err, ret);
                             }
-                        } catch (err) {
-                            facebook.sendMessage(sender, {
-                                text: err.message
+                        });
+                });
+            }
+
+            switch (action) {
+                // User has answered a new PAM question
+                // TODO: Create some way of updating questionnares and questions that works on all questionnares
+                case "pam_sum":
+                    let payload = response.result.payload;
+                    let score = parameters.pam_score;
+
+                    if (typeof score !== 'undefined') {
+                        score = score || 0;
+                        pool.query('SELECT id, salesforce_id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
+                            .then(res => {
+                                let vragenlijst = res.rows[0].id;
+                                let salesforce_id = res.rows[0].salesforce_id;
+                                pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
+                                    .then(res => {
+                                        let answer_no = res.rowCount + 1;
+                                        pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, score, answer_no]);
+                                        if (isDefined(salesforce_id)) {
+                                            pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
+                                                let handle = result.rows[0].handle;
+                                                salesforce.sobject('Questionnaire_Answer__c').create({
+                                                    Account__c: handle,
+                                                    Questionnaire__c: salesforce_id,
+                                                    Question_Number__c: answer_no,
+                                                    Score__c: score
+                                                },
+                                                    function (err, ret) {
+                                                        if (err || !ret.success) {
+                                                            return console.error(err, ret);
+                                                        }
+                                                    })
+                                            });
+                                        }
+                                    });
                             });
+                    }
+                    message.quick_replies = quickReplies;
+
+                    response.result.fulfillment.messages.forEach(function (message) {
+                        let payload = message.payload;
+                        if (isDefined(payload) && isDefined(payload.vragenlijst_end) && payload.vragenlijst_end) {
+                            delete message.quick_replies;
                         }
                     });
-                }
-            } else {
-                let message = {
-                    text: responseText
-                };
-                /**
-                 * These are the standard questionnare responses
-                 * @type {Array}
-                 */
-                let quickReplies = [{
-                    "content_type": "text",
-                    "title": "😁",
-                    "payload": "4"
-                },
-                    {
-                        "content_type": "text",
-                        "title": "🙂",
-                        "payload": "3"
-                    },
-                    {
-                        "content_type": "text",
-                        "title": "😞",
-                        "payload": "2"
-                    },
-                    {
-                        "content_type": "text",
-                        "title": "😡",
-                        "payload": "1"
-                    },
-                    {
-                        "content_type": "text",
-                        "title": "N.v.t",
-                        "payload": "0"
-                    }
-                ];
-                console.log('Response as text message');
+                    break;
 
-                // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
-                if (DEFAULT_INTENTS.includes(intent)) {
-                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
-                        let handle = result.rows[0].handle;
-                        salesforce.sobject('Case')
-                            .create({
-                                    AccountId: handle,
-                                    Status: 'New',
-                                    Origin: 'Smart Susan',
-                                    Subject: resolvedQuery,
-                                },
-                                function (err, ret) {
-                                    if (err || !ret.success) {
-                                        return console.error(err, ret);
-                                    }
-                                });
-                    });
-                }
-
-                switch (action) {
-                    // User has answered a new PAM question
-                    // TODO: Create some way of updating questionnares and questions that works on all questionnares
-                    case "pam_sum":
-                        let payload = response.result.payload;
-                        let score = parameters.pam_score;
-
-                        if (typeof score !== 'undefined') {
-                            score = score || 0;
-                            pool.query('SELECT id, salesforce_id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
-                                .then(res => {
+                case "SF12_sum":
+                    let sf12Score = parameters.sf12_score;
+                    if (typeof sf12Score !== 'undefined') {
+                        sf12Score = sf12Score || 0;
+                        pool.query('SELECT id, salesforce_id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
+                            .then(res => {
+                                if (res.rowCount) {
                                     let vragenlijst = res.rows[0].id;
                                     let salesforce_id = res.rows[0].salesforce_id;
                                     pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
                                         .then(res => {
                                             let answer_no = res.rowCount + 1;
-                                            pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, score, answer_no]);
+                                            pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, sf12Score, answer_no]);
                                             if (isDefined(salesforce_id)) {
                                                 pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
                                                     let handle = result.rows[0].handle;
+                                                    let numericalSf12Score = sf12Score;
+                                                    for (let list in sf12Answers) {
+                                                        if (sf12Answers.hasOwnProperty(list)) {
+                                                            for (let item of sf12Answers[list]) {
+                                                                if (item.payload.replace(/\s/g, '') === sf12Score.replace(/\s/g, '')) {
+                                                                    numericalSf12Score = sf12Answers[list].indexOf(item);
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                     salesforce.sobject('Questionnaire_Answer__c').create({
-                                                            Account__c: handle,
-                                                            Questionnaire__c: salesforce_id,
-                                                            Question_Number__c: answer_no,
-                                                            Score__c: score
-                                                        },
+                                                        Account__c: handle,
+                                                        Questionnaire__c: salesforce_id,
+                                                        Question_Number__c: answer_no + 100,
+                                                        Score__c: numericalSf12Score,
+                                                        Answer_Text__c: sf12Score
+                                                    },
                                                         function (err, ret) {
                                                             if (err || !ret.success) {
                                                                 return console.error(err, ret);
@@ -221,291 +275,241 @@ function handleResponse(response, sender) {
                                                 });
                                             }
                                         });
-                                });
-                        }
-                        message.quick_replies = quickReplies;
+                                }
+                            });
+                    }
 
-                        response.result.fulfillment.messages.forEach(function (message) {
-                            let payload = message.payload;
-                            if (isDefined(payload) && isDefined(payload.vragenlijst_end) && payload.vragenlijst_end) {
-                                delete message.quick_replies;
-                            }
+
+                    message.quick_replies = sf12Answers[parameters.question];
+                    break;
+
+                // User wants to start a new questionnare
+                case "start_vragenlijst":
+                    if (resolvedQuery !== 'PAM_vragenlijst_start' && resolvedQuery !== 'SF12_vragenlijst_start') {
+                        pool.query({
+                            text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)',
+                            values: [sender, parameters.vragenlijst]
+                        })
+                            .catch(e => console.error(e, e.stack));
+                    }
+                    break;
+
+                // User wants to create a new wunderlist-list
+                case "create_wunderlist":
+                    pool.query("SELECT * FROM connect_wunderlist WHERE client = $1", [sender]).then(result => {
+                        let connection = result.rows[0];
+                        wunderlist.createList(connection.access_token).done(list => {
+                            pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
+                                .then(() => {
+                                    let request = apiAiService.eventRequest({
+                                        name: 'new_list',
+                                        data: {
+                                            name: list.title
+                                        }
+                                    }, {
+                                            sessionId: sessionIds.get(sender)
+                                        });
+                                    request.on('response', (response) => {
+                                        handleResponse(response, sender);
+                                    });
+                                    request.on('error', (error) => console.error(error));
+
+                                    request.end();
+                                }).catch(e => console.error(e, e.stack));
+                            ;
+                            wunderlist.createWebhook(connection.access_token, list.id, HOSTNAME + 'webhook/wunderlist/' + sender);
                         });
-                        break;
+                    });
+                    break;
 
-                    case "SF12_sum":
-                        let sf12Score = parameters.sf12_score;
-                        if (typeof sf12Score !== 'undefined') {
-                            sf12Score = sf12Score || 0;
-                            pool.query('SELECT id, salesforce_id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
-                                .then(res => {
-                                    if (res.rowCount) {
-                                        let vragenlijst = res.rows[0].id;
-                                        let salesforce_id = res.rows[0].salesforce_id;
-                                        pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
-                                            .then(res => {
-                                                let answer_no = res.rowCount + 1;
-                                                pool.query('INSERT INTO antwoorden (vragenlijst, waarde, antwoord_op, vraag) VALUES ($1, $2, (SELECT NOW()), $3)', [vragenlijst, sf12Score, answer_no]);
-                                                if (isDefined(salesforce_id)) {
-                                                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
-                                                        let handle = result.rows[0].handle;
-                                                        let numericalSf12Score = sf12Score;
-                                                        for (let list in sf12Answers) {
-                                                            if (sf12Answers.hasOwnProperty(list)) {
-                                                                for (let item of sf12Answers[list]) {
-                                                                    if (item.payload.replace(/\s/g, '') === sf12Score.replace(/\s/g, '')) {
-                                                                        numericalSf12Score = sf12Answers[list].indexOf(item);
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                        salesforce.sobject('Questionnaire_Answer__c').create({
-                                                                Account__c: handle,
-                                                                Questionnaire__c: salesforce_id,
-                                                                Question_Number__c: answer_no + 100,
-                                                                Score__c: numericalSf12Score,
-                                                                Answer_Text__c: sf12Score
-                                                            },
-                                                            function (err, ret) {
-                                                                if (err || !ret.success) {
-                                                                    return console.error(err, ret);
-                                                                }
-                                                            })
-                                                    });
-                                                }
-                                            });
+                // User wants to connect to a service
+                case "connect_service":
+                    let service = response.result.parameters.service;
+                    if (isDefined(service)) {
+                        switch (service) {
+                            case "Nokia":
+                                // Get a reqest token, and a login url to send to the user.
+                                nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
+                                    if (!error) {
+                                        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                                            let fbuser = result.rows[0].handle;
+                                            facebook.sendMessage(fbuser, { text: url });
+                                            pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
+                                                pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
+                                                    .catch(e => console.error(e, e.stack));
+                                            }).catch(e => console.error(e, e.stack));
+                                        });
+                                    }
+                                });
+                                break;
+                            case "Wunderlist":
+                                message.text += '\n' + HOSTNAME + 'connect/wunderlist/' + sender;
+                                break;
+                            case "Vitadock":
+                                vitadock.getRequestUrl((error, url, oAuthToken, oAuthTokenSecret) => {
+                                    if (!error) {
+                                        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                                            let fbuser = result.rows[0].handle;
+                                            facebook.sendMessage(fbuser, { text: url });
+                                            pool.query('DELETE FROM connect_vitadock WHERE client = $1', [sender]).then(() => {
+                                                pool.query('INSERT INTO connect_vitadock (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
+                                                    .catch(e => console.error(e, e.stack));
+                                            }).catch(e => console.error(e, e.stack));
+                                        });
                                     }
                                 });
                         }
-
-
-                        message.quick_replies = sf12Answers[parameters.question];
-                        break;
-
-                    // User wants to start a new questionnare
-                    case "start_vragenlijst":
-                        if (resolvedQuery !== 'PAM_vragenlijst_start' && resolvedQuery !== 'SF12_vragenlijst_start') {
-                            pool.query({
-                                text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)',
-                                values: [sender, parameters.vragenlijst]
-                            })
-                                .catch(e => console.error(e, e.stack));
-                        }
-                        break;
-
-                    // User wants to create a new wunderlist-list
-                    case "create_wunderlist":
-                        pool.query("SELECT * FROM connect_wunderlist WHERE client = $1", [sender]).then(result => {
-                            let connection = result.rows[0];
-                            wunderlist.createList(connection.access_token).done(list => {
-                                pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
-                                    .then(() => {
-                                        let request = apiAiService.eventRequest({
-                                            name: 'new_list',
-                                            data: {
-                                                name: list.title
-                                            }
-                                        }, {
-                                            sessionId: sessionIds.get(sender)
-                                        });
-                                        request.on('response', (response) => {
-                                            handleResponse(response, sender);
-                                        });
-                                        request.on('error', (error) => console.error(error));
-
-                                        request.end();
-                                    }).catch(e => console.error(e, e.stack));
-                                ;
-                                wunderlist.createWebhook(connection.access_token, list.id, HOSTNAME + 'webhook/wunderlist/' + sender);
-                            });
-                        });
-                        break;
-
-                    // User wants to connect to a service
-                    case "connect_service":
-                        let service = response.result.parameters.service;
-                        if (isDefined(service)) {
-                            switch (service) {
-                                case "Nokia":
-                                    // Get a reqest token, and a login url to send to the user.
-                                    nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
-                                        if (!error) {
-                                            pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                                                let fbuser = result.rows[0].handle;
-                                                facebook.sendMessage(fbuser, {text: url});
-                                                pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
-                                                    pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
-                                                        .catch(e => console.error(e, e.stack));
-                                                }).catch(e => console.error(e, e.stack));
-                                            });
-                                        }
-                                    });
-                                    break;
-                                case "Wunderlist":
-                                    message.text += '\n' + HOSTNAME + 'connect/wunderlist/' + sender;
-                                    break;
-                                case "Vitadock":
-                                    vitadock.getRequestUrl((error, url, oAuthToken, oAuthTokenSecret) => {
-                                        if (!error) {
-                                            pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                                                let fbuser = result.rows[0].handle;
-                                                facebook.sendMessage(fbuser, {text: url});
-                                                pool.query('DELETE FROM connect_vitadock WHERE client = $1', [sender]).then(() => {
-                                                    pool.query('INSERT INTO connect_vitadock (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
-                                                        .catch(e => console.error(e, e.stack));
-                                                }).catch(e => console.error(e, e.stack));
-                                            });
-                                        }
-                                    });
-                            }
-                        }
-                        break;
-                    case "RecipeNameForLink":
-                        if (parameters.RecipeNameToRecipeLink) {
-                            pool.query('SELECT id, url, duration FROM recipes WHERE name = $1 LIMIT 1', [parameters.RecipeNameToRecipeLink.toLowerCase()]).then(result => {
-                                recipeState[sender] = result.rows[0].id
-                                let recipe = result.rows[0];
-                                pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                                    let fbuser = result.rows[0].handle;
-                                    let request = apiAiService.eventRequest({
-                                        name: 'RECIPE',
-                                        data: {
-                                            url: recipe.url,
-                                            duration: recipe.duration
-                                        }
-                                    }, {
+                    }
+                    break;
+                case "RecipeNameForLink":
+                    if (parameters.RecipeNameToRecipeLink) {
+                        pool.query('SELECT id, url, duration FROM recipes WHERE name = $1 LIMIT 1', [parameters.RecipeNameToRecipeLink.toLowerCase()]).then(result => {
+                            recipeState[sender] = result.rows[0].id
+                            let recipe = result.rows[0];
+                            pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                                let fbuser = result.rows[0].handle;
+                                let request = apiAiService.eventRequest({
+                                    name: 'RECIPE',
+                                    data: {
+                                        url: recipe.url,
+                                        duration: recipe.duration
+                                    }
+                                }, {
                                         sessionId: sessionIds.get(fbuser),
 
                                     });
 
-                                    request.on('response', (response) => {
-                                        handleResponse(response, fbuser);
-                                    });
-                                    request.on('error', (error) => console.error(error));
-                                    request.end();
+                                request.on('response', (response) => {
+                                    handleResponse(response, fbuser);
                                 });
+                                request.on('error', (error) => console.error(error));
+                                request.end();
+                            });
+                        });
+                    }
+                    break;
+                case 'RecipeNameForLink.RecipeNameForLink-automatic.RecipeNameForLink-automatic-yes.RecipeNameForLink-automatic-yes-selectnumber':
+                    let number = parameters.number;
+                    pool.query("SELECT * FROM connect_wunderlist WHERE client = $1", [sender]).then(result => {
+                        let connection = result.rows[0];
+                        if (isDefined(connection)) {
+                            pool.query('SELECT id from wunderlist_lists WHERE client = $1', [sender]).then(result => {
+                                if (result.rowCount) {
+                                    addRecipeToList(result.rows[0].id, connection.access_token, recipeState[sender], number);
+                                } else {
+                                    wunderlist.createList(connection.access_token).done(list => {
+                                        pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at]);
+                                        addRecipeToList(list.id, connection.access_token, recipeState[sender], number);
+                                    });
+                                }
                             });
                         }
-                        break;
-                    case 'RecipeNameForLink.RecipeNameForLink-automatic.RecipeNameForLink-automatic-yes.RecipeNameForLink-automatic-yes-selectnumber':
-                        let number = parameters.number;
-                        pool.query("SELECT * FROM connect_wunderlist WHERE client = $1", [sender]).then(result => {
-                            let connection = result.rows[0];
-                            if (isDefined(connection)) {
-                                pool.query('SELECT id from wunderlist_lists WHERE client = $1', [sender]).then(result => {
-                                    if (result.rowCount) {
-                                        addRecipeToList(result.rows[0].id, connection.access_token, recipeState[sender], number);
-                                    } else {
-                                        wunderlist.createList(connection.access_token).done(list => {
-                                            pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at]);
-                                            addRecipeToList(list.id, connection.access_token, recipeState[sender], number);
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                        break;
-                    case "my_facebook_id":
-                        message.text += '\n' + sender;
-                        break;
-                    default:
-                        console.warn('Received an unknown action from API.ai: "' + action + '"');
-                }
-
-                if (intentName === "Connected Wunderlist") {
-                    message.quick_replies = [{
-                        "content_type": "text",
-                        "title": "Nieuwe lijst",
-                        "payload": "Nieuwe lijst"
-                    },
-                        {
-                            "content_type": "text",
-                            "title": "Niet nu",
-                            "payload": "Niet nu"
-                        }];
-                } else if (intentName === 'PAM_vragenlijst_einde') {
-                    delete message.quick_replies;
-                }
-
-                if (isDefined(responseText)) {
-                    // facebook API limit for text length is 640,
-                    // so we must split message if needed
-                    let splittedText = splitResponse(message.text);
-                    // Send messages asynchronously, to ensure they arrive in the right order 
-                    async.eachSeries(splittedText, (textPart, callback) => {
-                        message.text = textPart;
-                        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                            let fbuser = result.rows[0].handle;
-                            facebook.sendMessage(fbuser, message, callback);
-                        });
                     });
-                } else {
-                    facebook.sendSenderAction(sender, 'typing_off');
-                }
+                    break;
+                case "my_facebook_id":
+                    message.text += '\n' + sender;
+                    break;
+                default:
+                    console.warn('Received an unknown action from API.ai: "' + action + '"');
             }
 
+            if (intentName === "Connected Wunderlist") {
+                message.quick_replies = [{
+                    "content_type": "text",
+                    "title": "Nieuwe lijst",
+                    "payload": "Nieuwe lijst"
+                },
+                {
+                    "content_type": "text",
+                    "title": "Niet nu",
+                    "payload": "Niet nu"
+                }];
+            } else if (intentName === 'PAM_vragenlijst_einde') {
+                delete message.quick_replies;
+            }
 
-            // Some messages Have a custom payload, we need to handle this payload;
-            response.result.fulfillment.messages.forEach(function (message) {
-                let payload = message.payload;
-                if (isDefined(payload)) {
-                    /** @type {string} */
-                    let followUp = payload.followUp;
-                    /** @type {boolean} */
-                    let vragenlijst_end = payload.vragenlijst_end;
+            if (isDefined(responseText)) {
+                // facebook API limit for text length is 640,
+                // so we must split message if needed
+                let splittedText = splitResponse(message.text);
+                // Send messages asynchronously, to ensure they arrive in the right order 
+                async.eachSeries(splittedText, (textPart, callback) => {
+                    message.text = textPart;
+                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                        let fbuser = result.rows[0].handle;
+                        facebook.sendMessage(fbuser, message, callback);
+                    });
+                });
+            } else {
+                facebook.sendSenderAction(sender, 'typing_off');
+            }
+        }
 
-                    if (isDefined(followUp)) {
-                        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                            let fbuser = result.rows[0].handle;
 
-                            let request = apiAiService.eventRequest({
-                                name: followUp
-                            }, {
+        // Some messages Have a custom payload, we need to handle this payload;
+        response.result.fulfillment.messages.forEach(function (message) {
+            let payload = message.payload;
+            if (isDefined(payload)) {
+                /** @type {string} */
+                let followUp = payload.followUp;
+                /** @type {boolean} */
+                let vragenlijst_end = payload.vragenlijst_end;
+
+                if (isDefined(followUp)) {
+                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
+                        let fbuser = result.rows[0].handle;
+
+                        let request = apiAiService.eventRequest({
+                            name: followUp
+                        }, {
                                 sessionId: sessionIds.get(fbuser)
                             });
 
-                            request.on('response', (response) => {
-                                handleResponse(response, sender);
-                            });
-                            request.on('error', (error) => console.error(error));
-                            request.end();
+                        request.on('response', (response) => {
+                            handleResponse(response, sender);
                         });
-                    }
-
-                    if (isDefined(vragenlijst_end) && vragenlijst_end) {
-                        pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender]).then(res => {
-                            let vragenlijst = res.rows[0].id;
-                            pool.query('UPDATE vragenlijsten set gestopt = (SELECT NOW()) WHERE id = $1', [vragenlijst])
-                        });
-                    }
+                        request.on('error', (error) => console.error(error));
+                        request.end();
+                    });
                 }
-            }, this);
-        });
+
+                if (isDefined(vragenlijst_end) && vragenlijst_end) {
+                    pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender]).then(res => {
+                        let vragenlijst = res.rows[0].id;
+                        pool.query('UPDATE vragenlijsten set gestopt = (SELECT NOW()) WHERE id = $1', [vragenlijst])
+                    });
+                }
+            }
+        }, this);
     }
 }
 
-function processEvent(event) {
-    let sender = event.sender.id.toString();
+function processAlterDeskEvent(event) {
 
-    if ((event.message && event.message.text) || (event.postback && event.postback.payload)) {
-        let text = event.message ? event.message.text : event.postback.payload;
-        // Handle a text message from this sender
+}
 
-        if (!sessionIds.has(sender)) {
-            sessionIds.set(sender, uuid.v1());
+function processFacebookEvent(event) {
+    getOrRegisterUser(event.sender.id.toString(), 'FB').then(sender => {
+        if ((event.message && event.message.text) || (event.postback && event.postback.payload)) {
+            let text = event.message ? event.message.text : event.postback.payload;
+            // Handle a text message from this sender
+
+            if (!sessionIds.has(sender)) {
+                sessionIds.set(sender, uuid.v1());
+            }
+
+            //send message to api.ai
+            let apiaiRequest = apiAiService.textRequest(text, {
+                sessionId: sessionIds.get(sender)
+            });
+            //receive message from api.ai
+            apiaiRequest.on('response', (response) => {
+                handleResponse(response, sender);
+            });
+            apiaiRequest.on('error', (error) => console.error('Error: ' + error));
+            apiaiRequest.end();
         }
-
-        //send message to api.ai
-        let apiaiRequest = apiAiService.textRequest(text, {
-            sessionId: sessionIds.get(sender)
-        });
-        //receive message from api.ai
-        apiaiRequest.on('response', (response) => {
-            handleResponse(response, sender);
-        });
-        apiaiRequest.on('error', (error) => console.error('Error: ' + error));
-        apiaiRequest.end();
-    }
+    });
 }
 
 /**
@@ -577,8 +581,8 @@ function sendMeasurementMessage(types, user) {
     let request = apiAiService.eventRequest({
         name: event
     }, {
-        sessionId: sessionIds.get(user)
-    });
+            sessionId: sessionIds.get(user)
+        });
 
     request.on('response', (response) => {
         handleResponse(response, user);
@@ -692,15 +696,15 @@ function getNokiaMeasurements(userid) {
                                     pool.query("INSERT INTO measure_weight (client, measure_date, weight) VALUES ($1, $2, $3) ON CONFLICT (client, measure_date) DO UPDATE SET weight = excluded.weight", [user.client, date, value]);
                                     salesforce.sobject('Weight_Measurements__c')
                                         .create({
-                                                Account__c: client.handle,
-                                                Date_Time_Measurement__c: Date(date).toISOString(),
-                                                Value__c: value
-                                            },
-                                            function (err, ret) {
-                                                if (err || !ret.success) {
-                                                    return console.error(err, ret);
-                                                }
-                                            });
+                                            Account__c: client.handle,
+                                            Date_Time_Measurement__c: Date(date).toISOString(),
+                                            Value__c: value
+                                        },
+                                        function (err, ret) {
+                                            if (err || !ret.success) {
+                                                return console.error(err, ret);
+                                            }
+                                        });
                                 }
                             }
                         }
@@ -733,7 +737,7 @@ function getNokiaMeasurements(userid) {
  * @param {string|null} user User id to subscribe to, or null to subscribe to all users
  */
 function subscribeToNokia(user) {
-    let query = {text: 'SELECT * FROM connect_nokia'};
+    let query = { text: 'SELECT * FROM connect_nokia' };
     if (isDefined(user)) {
         query.text += ' WHERE client = $1';
         query.values = [user];
@@ -781,12 +785,12 @@ function syncAlterdeskChats() {
                 .header('Authorization', 'Bearer ' + alterdesk.apiToken)
                 .header('Content-Type', 'application/json; charset=UTF-8')
                 .post(JSON.stringify(webhookData))((err, resp, body) => {
-                if (!resp) {
-                    console.log("No response from Alterdesk");
-                } else if (!(resp.statusCode === 200 || resp.statusCode === 201 || resp.statusCode === 204 || resp.statusCode === 304)) {
-                    console.log("Error while creating webhook for Alterdesk groupchat " + groupchat.id + ": " + body);
-                }
-            });
+                    if (!resp) {
+                        console.log("No response from Alterdesk");
+                    } else if (!(resp.statusCode === 200 || resp.statusCode === 201 || resp.statusCode === 204 || resp.statusCode === 304)) {
+                        console.log("Error while creating webhook for Alterdesk groupchat " + groupchat.id + ": " + body);
+                    }
+                });
         }
     });
 }
@@ -810,7 +814,7 @@ function isDefined(obj) {
 }
 
 function getProfile(handle, type, callback) {
-    switch(type) {
+    switch (type) {
         case 'FB':
             facebook.getProfile(handle, type, callback);
             break;
@@ -891,13 +895,13 @@ function getVitaDockData(client, types) {
                         let date = new Date(item.measurementDate);
                         if (type === 0) {
                             salesforce.sobject('Blood_Pressure_Measurement__c').create({
-                                    Account__c: handle,
-                                    Diastole_Blood_Pressure__c: item.diastole,
-                                    Systole_Blood_Pressure__c: item.systole,
-                                    Heartbeat__c: item.pulse,
+                                Account__c: handle,
+                                Diastole_Blood_Pressure__c: item.diastole,
+                                Systole_Blood_Pressure__c: item.systole,
+                                Heartbeat__c: item.pulse,
 
-                                    Date_Time_Measurement__c: date.toISOString(),
-                                },
+                                Date_Time_Measurement__c: date.toISOString(),
+                            },
                                 function (err, ret) {
                                     if (err || !ret.success) {
                                         return console.error(err, ret);
@@ -906,10 +910,10 @@ function getVitaDockData(client, types) {
                         }
                         else if (type === 1) {
                             salesforce.sobject('Glucose_Measurement__c').create({
-                                    Account__c: handle,
-                                    Blood_Glucose__c: item.bloodGlucose,
-                                    Date_Time_Measurement__c: date.toISOString(),
-                                },
+                                Account__c: handle,
+                                Blood_Glucose__c: item.bloodGlucose,
+                                Date_Time_Measurement__c: date.toISOString(),
+                            },
                                 function (err, ret) {
                                     if (err || !ret.success) {
                                         return console.error(err, ret);
@@ -917,15 +921,15 @@ function getVitaDockData(client, types) {
                                 });
                         } else if (type === 4) {
                             salesforce.sobject('Weight_Measurements__c').create({
-                                    Account__c: handle,
-                                    Value__c: item.bodyWeight,
-                                    BMI__c: item.bmi,
-                                    Body_Fat_Percentage__c: item.bodyFat,
-                                    Body_Water_Percentage__c: item.bodyWater,
-                                    Bone_Mass_Percentage__c: item.boneMass,
-                                    Muscle_Mass_Percentage__c: item.muscleMass,
-                                    Date_Time_Measurement__c: date.toISOString(),
-                                },
+                                Account__c: handle,
+                                Value__c: item.bodyWeight,
+                                BMI__c: item.bmi,
+                                Body_Fat_Percentage__c: item.bodyFat,
+                                Body_Water_Percentage__c: item.bodyWater,
+                                Bone_Mass_Percentage__c: item.boneMass,
+                                Muscle_Mass_Percentage__c: item.muscleMass,
+                                Date_Time_Measurement__c: date.toISOString(),
+                            },
                                 function (err, ret) {
                                     if (err || !ret.success) {
                                         return console.error(err, ret);
@@ -1020,8 +1024,8 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                                 let request = apiAiService.eventRequest({
                                     name: 'nokia_connected'
                                 }, {
-                                    sessionId: sessionIds.get(handle)
-                                });
+                                        sessionId: sessionIds.get(handle)
+                                    });
 
                                 request.on('response', (response) => {
                                     handleResponse(response, client);
@@ -1049,7 +1053,7 @@ app.get('/connect/nokia/:clientId', (req, res) => {
 
 // Page a user is sent to by Paula to connect to Wunderlist. Redirects to the wunderlist Login page
 app.get('/connect/wunderlist/:clientId', (req, res) => {
-    res.cookie('client', req.params.clientId, {maxAge: 1000 * 60 * 15, httpOnly: true})
+    res.cookie('client', req.params.clientId, { maxAge: 1000 * 60 * 15, httpOnly: true })
         .redirect(wunderlist.getAuthUri());
 });
 
@@ -1068,8 +1072,8 @@ app.get('/connect/wunderlist/', (req, res) => {
                         let request = apiAiService.eventRequest({
                             name: 'wunderlist_connected'
                         }, {
-                            sessionId: sessionIds.get(user)
-                        });
+                                sessionId: sessionIds.get(user)
+                            });
 
                         request.on('response', (response) => {
                             handleResponse(response, user);
@@ -1125,8 +1129,8 @@ app.get('/connect/vitadock', (req, res) => {
                                 let request = apiAiService.eventRequest({
                                     name: 'vitadock_connected'
                                 }, {
-                                    sessionId: sessionIds.get(handle)
-                                });
+                                        sessionId: sessionIds.get(handle)
+                                    });
 
                                 request.on('response', (response) => {
                                     handleResponse(response, client);
@@ -1177,9 +1181,7 @@ app.post('/webhook/', (req, res) => {
                     messaging_events.forEach((event) => {
                         if (event.message && !event.message.is_echo ||
                             event.postback && event.postback.payload) {
-                            //sendFBMessage(event.sender.id, {text: "Debugtekst fb: " + debugtekst});
-                            processEvent(event);
-                            //sendFBMessage(event.sender.id, {text: "Jij bent: " + event.sender.id});
+                            processFacebookEvent(event);
                         }
                     });
                 }
@@ -1203,12 +1205,13 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
         let data = JSONbig.parse(req.body);
         let groupchat_id = data.groupchat_id;
         let message_id = data.message;
-        alterdesk.get('/groupchats/'+ groupchat_id + '/messages/' + message_id, function(success, result) {
-            if (result != null){
+        alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
+            console.log(result);
+            if (result != null) {
                 let message = result.body;
                 console.log(message)
             }
-        } );
+        });
         console.log(req);
         res.status(200).send();
     } catch (err) {
@@ -1227,55 +1230,55 @@ app.post('/webhook/scheduler', (req, res) => {
         'UNION ALL ' +
         '(SELECT distinct on (client) measure_weight.client, \'weight\' as measurement_type, measure_date, sent_message FROM measure_weight LEFT JOIN connect_nokia ON measure_weight.client = connect_nokia.client ORDER BY client, measure_date DESC)' +
         ') as latest_records WHERE measure_date < (CURRENT_DATE - INTERVAL \'1 week\')').then(result => {
-        let send = {};
-        result.rows.forEach(row => {
-            // Define what messages we need to send
-            let user = row.client;
-            let sent = isDefined(row.sent_message) ? row.sent_message.split(',') : [];
-            let type = row.measurement_type;
-            if (!(user in send)) {
-                send[user] = [];
-            }
-            // Don't send a message if we've already sent one for this measurement
-            if (!sent.includes(type)) {
-                send[user].push(type);
+            let send = {};
+            result.rows.forEach(row => {
+                // Define what messages we need to send
+                let user = row.client;
+                let sent = isDefined(row.sent_message) ? row.sent_message.split(',') : [];
+                let type = row.measurement_type;
+                if (!(user in send)) {
+                    send[user] = [];
+                }
+                // Don't send a message if we've already sent one for this measurement
+                if (!sent.includes(type)) {
+                    send[user].push(type);
+                }
+            });
+            for (let user in send) {
+                if (!send.hasOwnProperty(user)) continue;
+
+                if (!sessionIds.has(user)) {
+                    sessionIds.set(user, uuid.v1());
+                }
+
+                send[user].forEach(type => {
+                    pool.query('SELECT registration_date FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
+                        .then(res => {
+                            if (res.rowCount > 0) {
+                                let request = apiAiService.eventRequest({
+                                    name: 'old_measurement_' + type
+                                }, {
+                                        sessionId: sessionIds.get(user)
+                                    });
+                                request.on('response', (response) => {
+                                    handleResponse(response, user);
+                                });
+                                request.on('error', (error) => console.error(error));
+                                request.end();
+
+                                pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
+                                    let userRecord = result.rows[0];
+                                    let sentTypes = userRecord.sent_message.split(',');
+                                    if (!sentTypes.includes(type)) {
+                                        sentTypes.push(type);
+                                    }
+                                    pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
+                                });
+                            }
+                        });
+                });
             }
         });
-        for (let user in send) {
-            if (!send.hasOwnProperty(user)) continue;
-
-            if (!sessionIds.has(user)) {
-                sessionIds.set(user, uuid.v1());
-            }
-
-            send[user].forEach(type => {
-                pool.query('SELECT registration_date FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
-                    .then(res => {
-                        if (res.rowCount > 0) {
-                            let request = apiAiService.eventRequest({
-                                name: 'old_measurement_' + type
-                            }, {
-                                sessionId: sessionIds.get(user)
-                            });
-                            request.on('response', (response) => {
-                                handleResponse(response, user);
-                            });
-                            request.on('error', (error) => console.error(error));
-                            request.end();
-
-                            pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
-                                let userRecord = result.rows[0];
-                                let sentTypes = userRecord.sent_message.split(',');
-                                if (!sentTypes.includes(type)) {
-                                    sentTypes.push(type);
-                                }
-                                pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
-                            });
-                        }
-                    });
-            });
-        }
-    });
     res.status(200).send();
 });
 
@@ -1362,8 +1365,8 @@ app.post('/webhook/salesforce', (req, res) => {
                             let request = apiAiService.eventRequest({
                                 name: intent,
                             }, {
-                                sessionId: sessionIds.get(handle)
-                            });
+                                    sessionId: sessionIds.get(handle)
+                                });
 
                             request.on('response', (response) => {
                                 handleResponse(response, handle);
@@ -1383,9 +1386,9 @@ app.post('/webhook/salesforce', (req, res) => {
                             request.end();
                             res.status(200).send();
                         } else if (isDefined(response) && isDefined(subject)) {
-                            facebook.sendMessage(handle, {text: 'Je vroeg "' + subject + '"'},
+                            facebook.sendMessage(handle, { text: 'Je vroeg "' + subject + '"' },
                                 () => {
-                                    facebook.sendMessage(handle, {text: response});
+                                    facebook.sendMessage(handle, { text: response });
                                 });
                             res.sendStatus(200);
                         } else {
