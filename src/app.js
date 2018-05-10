@@ -1203,14 +1203,13 @@ app.post('/webhook/', (req, res) => {
 app.post('/webhook/alterdesk/:groupid', (req, res) => {
     try {
         let data = req.body;
-        console.log(data)
         let user_id = data.user_id;
         let groupchat_id = data.groupchat_id;
         let message_id = data.message_id;
         if (user_id !== '2b479ab4-dc16-4db1-a094-7d5bd50d6c77') {
-            pool.query('SELECT COUNT(*) FROM alterdesk_messages_handled WHERE message_id = $1', [message_id])
+            pool.query('SELECT * FROM alterdesk_messages_handled WHERE message_id = $1', [message_id])
                 .then((result) => {
-                    if (result.rows[0].count.toInteger() === 0) {
+                    if (result.rowCount === 0) {
                         pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]);
                         alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
                             console.log(result);
