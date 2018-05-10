@@ -484,6 +484,8 @@ function processAlterDeskEvent(groupchat, event) {
             messageData.chatId = groupchat;
             messageData.isGroup = true;
 
+            console.log(message, messageData);
+
             alterdesk.sendMessage(messageData, () => {});
 
         });
