@@ -484,7 +484,7 @@ function processAlterDeskEvent(groupchat, event) {
             messageData.chatId = groupchat;
             messageData.isGroup = true;
 
-            alterdesk.sendMessage(messageData);
+            alterdesk.sendMessage(messageData, () => {});
 
         });
     });
@@ -505,6 +505,7 @@ function processFacebookEvent(event) {
                     message.text = textPart;
                     facebook.sendMessage(fbuser.toInteger(), message, callback);
                 });
+                facebook.sendSenderAction(sender, 'typing_off');
             });
         }
     });
