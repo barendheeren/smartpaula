@@ -1204,7 +1204,7 @@ app.post('/webhook/', (req, res) => {
 
 app.post('/webhook/alterdesk/:groupid', (req, res) => {
     try {
-        console.log(req);
+        console.log(req.body);
         let data = JSON.parse(req.body);
         let groupchat_id = data.groupchat_id;
         let message_id = data.message;
