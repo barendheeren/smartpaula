@@ -94,9 +94,6 @@ function handleResponse(response, sender, callback) {
         /** Additional parameters passed by the intent @type {object} */
         let parameters = response.result.parameters;
 
-        facebook.sendSenderAction(sender, 'typing_on');
-
-
         if (parameters.feedback) {
             let feedback = parameters.feedback === '👍' ? '+' : '-';
             pool.query('UPDATE log SET feedback = $1 WHERE client = $2 AND time = (select max(time) FROM log WHERE client = $2)', [feedback, sender]);
@@ -218,7 +215,7 @@ function handleResponse(response, sender, callback) {
                                                         if (err || !ret.success) {
                                                             return console.error(err, ret);
                                                         }
-                                                    })
+                                                    });
                                             });
                                         }
                                     });
@@ -316,7 +313,6 @@ function handleResponse(response, sender, callback) {
 
                                     request.end();
                                 }).catch(e => console.error(e, e.stack));
-                            ;
                             wunderlist.createWebhook(connection.access_token, list.id, HOSTNAME + 'webhook/wunderlist/' + sender);
                         });
                     });
@@ -331,14 +327,11 @@ function handleResponse(response, sender, callback) {
                                 // Get a reqest token, and a login url to send to the user.
                                 nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
                                     if (!error) {
-                                        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                                            let fbuser = result.rows[0].handle;
-                                            facebook.sendMessage(fbuser, { text: url });
-                                            pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
-                                                pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
-                                                    .catch(e => console.error(e, e.stack));
-                                            }).catch(e => console.error(e, e.stack));
-                                        });
+                                        callback(url);
+                                        pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
+                                            pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
+                                                .catch(e => console.error(e, e.stack));
+                                        }).catch(e => console.error(e, e.stack));
                                     }
                                 });
                                 break;
@@ -348,14 +341,11 @@ function handleResponse(response, sender, callback) {
                             case "Vitadock":
                                 vitadock.getRequestUrl((error, url, oAuthToken, oAuthTokenSecret) => {
                                     if (!error) {
-                                        pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                                            let fbuser = result.rows[0].handle;
-                                            facebook.sendMessage(fbuser, { text: url });
-                                            pool.query('DELETE FROM connect_vitadock WHERE client = $1', [sender]).then(() => {
-                                                pool.query('INSERT INTO connect_vitadock (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
-                                                    .catch(e => console.error(e, e.stack));
-                                            }).catch(e => console.error(e, e.stack));
-                                        });
+                                        callback(url);
+                                        pool.query('DELETE FROM connect_vitadock WHERE client = $1', [sender]).then(() => {
+                                            pool.query('INSERT INTO connect_vitadock (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
+                                                .catch(e => console.error(e, e.stack));
+                                        }).catch(e => console.error(e, e.stack));
                                     }
                                 });
                         }
@@ -364,27 +354,24 @@ function handleResponse(response, sender, callback) {
                 case "RecipeNameForLink":
                     if (parameters.RecipeNameToRecipeLink) {
                         pool.query('SELECT id, url, duration FROM recipes WHERE name = $1 LIMIT 1', [parameters.RecipeNameToRecipeLink.toLowerCase()]).then(result => {
-                            recipeState[sender] = result.rows[0].id
+                            recipeState[sender] = result.rows[0].id;
                             let recipe = result.rows[0];
-                            pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                                let fbuser = result.rows[0].handle;
-                                let request = apiAiService.eventRequest({
-                                    name: 'RECIPE',
-                                    data: {
-                                        url: recipe.url,
-                                        duration: recipe.duration
-                                    }
-                                }, {
-                                        sessionId: sessionIds.get(fbuser),
 
-                                    });
+                            let request = apiAiService.eventRequest({
+                                name: 'RECIPE',
+                                data: {
+                                    url: recipe.url,
+                                    duration: recipe.duration
+                                }
+                            }, {
+                                sessionId: sessionIds.get(sender),
 
-                                request.on('response', (response) => {
-                                    handleResponse(response, fbuser);
-                                });
-                                request.on('error', (error) => console.error(error));
-                                request.end();
                             });
+                            request.on('response', (response) => {
+                                handleResponse(response, sender, callback);
+                            });
+                            request.on('error', (error) => console.error(error));
+                            request.end();
                         });
                     }
                     break;
@@ -406,9 +393,6 @@ function handleResponse(response, sender, callback) {
                         }
                     });
                     break;
-                case "my_facebook_id":
-                    message.text += '\n' + sender;
-                    break;
                 default:
                     console.warn('Received an unknown action from API.ai: "' + action + '"');
             }
@@ -429,19 +413,7 @@ function handleResponse(response, sender, callback) {
             }
 
             if (isDefined(responseText)) {
-                // facebook API limit for text length is 640,
-                // so we must split message if needed
-                let splittedText = splitResponse(message.text);
-                // Send messages asynchronously, to ensure they arrive in the right order 
-                async.eachSeries(splittedText, (textPart, callback) => {
-                    message.text = textPart;
-                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                        let fbuser = result.rows[0].handle;
-                        facebook.sendMessage(fbuser, message, callback);
-                    });
-                });
-            } else {
-                facebook.sendSenderAction(sender, 'typing_off');
+                callback(responseText);
             }
         }
 
@@ -484,30 +456,56 @@ function handleResponse(response, sender, callback) {
     }
 }
 
-function processAlterDeskEvent(event) {
+function processMessage(message, sender, callback) {
+    if (!sessionIds.has(sender)) {
+        sessionIds.set(sender, uuid.v1());
+    }
+
+    //send message to api.ai
+    let apiaiRequest = apiAiService.textRequest(message, {
+        sessionId: sessionIds.get(sender)
+    });
+    //receive message from api.ai
+    apiaiRequest.on('response', (response) => {
+        handleResponse(response, sender, callback);
+    });
+    apiaiRequest.on('error', (error) => console.error('Error: ' + error));
+    apiaiRequest.end();
 
 }
 
+function processAlterDeskEvent(groupchat, event) {
+    let message = event.body;
+    getOrRegisterUser(groupchat, 'AD').then(sender => {
+        processMessage(message, sender, message => {
+            let messageData = new Alterdesk.SendMessageData();
+
+            messageData.message = message.text;
+            messageData.chatId = groupchat;
+            messageData.isGroup = true;
+
+            alterdesk.sendMessage(messageData);
+
+        });
+    });
+}
+
 function processFacebookEvent(event) {
-    getOrRegisterUser(event.sender.id.toString(), 'FB').then(sender => {
+    let fbuser = event.sender.id.toString();
+    getOrRegisterUser(fbuser, 'FB').then(sender => {
         if ((event.message && event.message.text) || (event.postback && event.postback.payload)) {
             let text = event.message ? event.message.text : event.postback.payload;
-            // Handle a text message from this sender
-
-            if (!sessionIds.has(sender)) {
-                sessionIds.set(sender, uuid.v1());
-            }
-
-            //send message to api.ai
-            let apiaiRequest = apiAiService.textRequest(text, {
-                sessionId: sessionIds.get(sender)
+            facebook.sendSenderAction(sender, 'typing_on');
+            processMessage(text, sender, function (message) {
+                // facebook API limit for text length is 640,
+                // so we must split message if needed
+                let splittedText = splitResponse(message.text);
+                // Send messages asynchronously, to ensure they arrive in the right order
+                async.eachSeries(splittedText, (textPart, callback) => {
+                    message.text = textPart;
+                    facebook.sendMessage(fbuser.toInteger(), message, callback);
+                });
             });
-            //receive message from api.ai
-            apiaiRequest.on('response', (response) => {
-                handleResponse(response, sender);
-            });
-            apiaiRequest.on('error', (error) => console.error('Error: ' + error));
-            apiaiRequest.end();
         }
     });
 }
@@ -1207,17 +1205,14 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
         let data = req.body;
         let groupchat_id = data.groupchat_id;
         let message_id = data.message_id;
-        console.log(data);
         alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
             console.log(result);
             if (result !== null) {
-                let message = result.body;
-                console.log(message);
+                processAlterDeskEvent(groupchat_id, result);
             }
         });
         res.status(200).send();
     } catch (err) {
-        console.log(err);
         return res.status(400).json({
             status: "error",
             error: err
