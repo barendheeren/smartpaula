@@ -412,9 +412,7 @@ function handleResponse(response, sender, callback) {
                 delete message.quick_replies;
             }
 
-            if (isDefined(responseText)) {
-                callback(message);
-            }
+            callback(message);
         }
 
         // Some messages Have a custom payload, we need to handle this payload;
@@ -477,14 +475,16 @@ function processAlterDeskEvent(groupchat, event) {
     let message = event.body;
     getOrRegisterUser(groupchat, 'AD').then(sender => {
         processMessage(message, sender, message => {
-            let messageData = new Alterdesk.SendMessageData();
+            if(isDefined(message.text)) {
+                let messageData = new Alterdesk.SendMessageData();
 
-            messageData.message = message.text;
-            messageData.chatId = groupchat;
-            messageData.isGroup = true;
+                messageData.message = message.text;
+                messageData.chatId = groupchat;
+                messageData.isGroup = true;
 
-            alterdesk.sendMessage(messageData, () => {});
-
+                alterdesk.sendMessage(messageData, () => {
+                });
+            }
         });
     });
 }
@@ -496,15 +496,17 @@ function processFacebookEvent(event) {
             let text = event.message ? event.message.text : event.postback.payload;
             facebook.sendSenderAction(sender, 'typing_on');
             processMessage(text, sender, function (message) {
-                // facebook API limit for text length is 640,
-                // so we must split message if needed
-                let splittedText = splitResponse(message.text);
-                // Send messages asynchronously, to ensure they arrive in the right order
-                async.eachSeries(splittedText, (textPart, callback) => {
-                    message.text = textPart;
-                    facebook.sendMessage(fbuser.toInteger(), message, callback);
-                });
-                facebook.sendSenderAction(sender, 'typing_off');
+                if (isDefined(message.text)) {
+                    // facebook API limit for text length is 640,
+                    // so we must split message if needed
+                    let splittedText = splitResponse(message.text);
+                    // Send messages asynchronously, to ensure they arrive in the right order
+                    async.eachSeries(splittedText, (textPart, callback) => {
+                        message.text = textPart;
+                        facebook.sendMessage(fbuser.toInteger(), message, callback);
+                    });
+                    facebook.sendSenderAction(sender, 'typing_off');
+                }
             });
         }
     });
@@ -1212,7 +1214,6 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
                     if (result.rowCount === 0) {
                         pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]);
                         alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
-                            console.log(result);
                             if (result !== null) {
                                 processAlterDeskEvent(groupchat_id, result);
                             }
@@ -1346,7 +1347,6 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
         });
 
     } catch (err) {
-        console.log(err);
         return res.status(400).json({
             status: "error",
             error: err
