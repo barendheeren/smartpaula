@@ -1202,7 +1202,7 @@ app.post('/webhook/', (req, res) => {
 
 app.post('/webhook/alterdesk/:groupid', (req, res) => {
     try {
-        let data = JSONbig.parse(req.body);
+        let data = JSON.parse(req.body);
         let groupchat_id = data.groupchat_id;
         let message_id = data.message;
         alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
