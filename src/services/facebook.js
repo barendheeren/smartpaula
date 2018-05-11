@@ -58,6 +58,7 @@ Facebook.prototype.doSubscribeRequest = function () {
  * @param {function} callback Callback function, called when the sending has completed (failed or succeeded)
  */
 Facebook.prototype.sendMessage = function (sender, messageData, callback) {
+    callback = callback || function() {};
     this.sendSenderAction(sender, 'typing_off', () => {
         setTimeout(() => {
             request({
