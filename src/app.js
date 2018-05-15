@@ -327,11 +327,13 @@ function handleResponse(response, sender, callback) {
                                 // Get a reqest token, and a login url to send to the user.
                                 nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
                                     if (!error) {
-                                        callback(url);
+                                        callback({ text: url });
                                         pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
                                             pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
                                                 .catch(e => console.error(e, e.stack));
                                         }).catch(e => console.error(e, e.stack));
+                                    } else {
+                                        console.error(error);
                                     }
                                 });
                                 break;
@@ -341,7 +343,7 @@ function handleResponse(response, sender, callback) {
                             case "Vitadock":
                                 vitadock.getRequestUrl((error, url, oAuthToken, oAuthTokenSecret) => {
                                     if (!error) {
-                                        callback(url);
+                                        callback({ text: url });
                                         pool.query('DELETE FROM connect_vitadock WHERE client = $1', [sender]).then(() => {
                                             pool.query('INSERT INTO connect_vitadock (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
                                                 .catch(e => console.error(e, e.stack));
