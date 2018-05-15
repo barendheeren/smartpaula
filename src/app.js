@@ -834,7 +834,7 @@ function getProfile(handle, type, profile, callback) {
     }
 }
 
-function createNewClient(handle, type) {
+function createNewClient(handle, type, profile) {
     let id = uuid.v4();
     return pool.query("INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))", [id, handle, type])
         .then(res => {
