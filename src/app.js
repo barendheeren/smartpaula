@@ -503,7 +503,7 @@ function processFacebookEvent(event) {
                     // Send messages asynchronously, to ensure they arrive in the right order
                     async.eachSeries(splittedText, (textPart, callback) => {
                         message.text = textPart;
-                        facebook.sendMessage(fbuser.toInteger(), message, callback);
+                        facebook.sendMessage(parseInt(fbuser), message, callback);
                     });
                     facebook.sendSenderAction(sender, 'typing_off');
                 }
