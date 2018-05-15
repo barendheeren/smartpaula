@@ -475,7 +475,7 @@ function processMessage(message, sender, callback) {
 
 function processAlterDeskEvent(groupchat, event) {
     let message = event.body;
-    getOrRegisterUser(groupchat, 'AD').then(sender => {
+    getOrRegisterUser(groupchat, 'AD', event).then(sender => {
         processMessage(message, sender, message => {
             if (isDefined(message.text)) {
                 let messageData = new Alterdesk.SendMessageData();
@@ -815,18 +815,22 @@ function isDefined(obj) {
     return obj !== null;
 }
 
-function getProfile(handle, type, callback) {
-    switch (type) {
-        case 'FB':
-            facebook.getProfile(handle, function(profile) {
-                callback(profile.first_name + ' ' + profile.last_name);
-            });
-            break;
-        case 'AD':
-            alterdesk.get('users/' + handle, function(success, data) {
-                callback(data.first_name + ' ' + data.last_name);
-            });
-            break;
+function getProfile(handle, type, profile, callback) {
+    if(profile) {
+        callback(profile.first_name + ' ' + profile.last_name);
+    } else {
+        switch (type) {
+            case 'FB':
+                facebook.getProfile(handle, function (profile) {
+                    callback(profile.first_name + ' ' + profile.last_name);
+                });
+                break;
+            case 'AD':
+                alterdesk.get('users/' + handle, function (success, data) {
+                    callback(data.first_name + ' ' + data.last_name);
+                });
+                break;
+        }
     }
 }
 
@@ -834,7 +838,7 @@ function createNewClient(handle, type) {
     let id = uuid.v4();
     return pool.query("INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))", [id, handle, type])
         .then(res => {
-            getProfile(handle, type, (name) => {
+            getProfile(handle, type, profile, (name) => {
                 salesforce.sobject('Account').create({
                     name: name,
                     RecordTypeId: '0120Y0000015YRyQAM',
@@ -850,11 +854,11 @@ function createNewClient(handle, type) {
         });
 }
 
-function getOrRegisterUser(handle, type) {
+function getOrRegisterUser(handle, type, profile) {
     type = type || 'FB';
     return pool.query("SELECT * FROM clients WHERE handle = $1 or id = $1", [handle]).then(res => {
         if (!res.rowCount) {
-            return createNewClient(handle, type);
+            return createNewClient(handle, type, profile);
         } else {
             return res.rows[0].id;
         }
