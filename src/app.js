@@ -470,27 +470,44 @@ function processMessage(message, sender, callback) {
     });
     apiaiRequest.on('error', (error) => console.error('Error: ' + error));
     apiaiRequest.end();
+}
 
+function sendAlterDeskMessageFactory(groupChat){
+    return function(message) {
+        if (isDefined(message.text)) {
+            let messageData = new Alterdesk.SendMessageData();
+
+            messageData.message = message.text;
+            messageData.chatId = groupChat;
+            messageData.isGroup = true;
+
+            alterdesk.sendMessage(messageData, () => {
+            });
+        }
+    }
 }
 
 function processAlterDeskEvent(groupchat, event) {
     let message = event.body;
     getOrRegisterUser(groupchat, 'AD', event).then(sender => {
-        processMessage(message, sender, message => {
-            if (isDefined(message.text)) {
-                let messageData = new Alterdesk.SendMessageData();
-
-                messageData.message = message.text;
-                messageData.chatId = groupchat;
-                messageData.isGroup = true;
-
-                console.log(messageData);
-
-                alterdesk.sendMessage(messageData, () => {
-                });
-            }
-        });
+        processMessage(message, sender, sendAlterDeskMessageFactory(groupchat));
     });
+}
+
+function sendFacebookMessageFactory(fbuser) {
+    return function(message) {
+        if (isDefined(message.text)) {
+            // facebook API limit for text length is 640,
+            // so we must split message if needed
+            let splittedText = splitResponse(message.text);
+            // Send messages asynchronously, to ensure they arrive in the right order
+            async.eachSeries(splittedText, (textPart, callback) => {
+                message.text = textPart;
+                facebook.sendMessage(parseInt(fbuser), message, callback);
+            });
+            facebook.sendSenderAction(fbuser, 'typing_off');
+        }
+    }
 }
 
 function processFacebookEvent(event) {
@@ -498,20 +515,8 @@ function processFacebookEvent(event) {
     getOrRegisterUser(fbuser, 'FB').then(sender => {
         if ((event.message && event.message.text) || (event.postback && event.postback.payload)) {
             let text = event.message ? event.message.text : event.postback.payload;
-            facebook.sendSenderAction(sender, 'typing_on');
-            processMessage(text, sender, function (message) {
-                if (isDefined(message.text)) {
-                    // facebook API limit for text length is 640,
-                    // so we must split message if needed
-                    let splittedText = splitResponse(message.text);
-                    // Send messages asynchronously, to ensure they arrive in the right order
-                    async.eachSeries(splittedText, (textPart, callback) => {
-                        message.text = textPart;
-                        facebook.sendMessage(parseInt(fbuser), message, callback);
-                    });
-                    facebook.sendSenderAction(sender, 'typing_off');
-                }
-            });
+            facebook.sendSenderAction(fbuser, 'typing_on');
+            processMessage(text, sender, sendFacebookMessageFactory(fbuser));
         }
     });
 }
@@ -1373,7 +1378,7 @@ app.post('/webhook/salesforce', (req, res) => {
         pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'SF' LIMIT 1", [user])
             .then(result => {
                 if (result.rowCount) {
-                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' LIMIT 1", [result.rows[0].id]).then(result => {
+                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' OR type = 'AD' LIMIT 1", [result.rows[0].id]).then(result => {
                         let id = result.rows[0].id;
                         let handle = result.rows[0].handle;
                         let type = result.rows[0].type;
@@ -1389,7 +1394,11 @@ app.post('/webhook/salesforce', (req, res) => {
                             });
 
                             request.on('response', (response) => {
-                                handleResponse(response, handle);
+                                if(type === 'FB'){
+                                    handleResponse(response, id, sendFacebookMessageFactory(handle));
+                                } else if (type === 'AD') {
+                                    handleResponse(response, id, sendAlterDeskMessageFactory(handle));
+                                }
                             });
                             request.on('error', (error) => console.error(error));
 
@@ -1406,10 +1415,16 @@ app.post('/webhook/salesforce', (req, res) => {
                             request.end();
                             res.status(200).send();
                         } else if (isDefined(response) && isDefined(subject)) {
-                            facebook.sendMessage(handle, {text: 'Je vroeg "' + subject + '"'},
-                                () => {
-                                    facebook.sendMessage(handle, {text: response});
-                                });
+                            let sendFunction;
+                            if(type === 'FB'){
+                                sendFunction = sendFacebookMessageFactory(handle);
+                            } else if (type === 'AD') {
+                                sendFunction = sendAlterDeskMessageFactory(handle);
+                            }
+                            if(sendFunction){
+                                sendFunction({text: 'Je vroeg "' + subject + '"'});
+                                setTimeout(sendFunction, 1000, {text: response});
+                            }
                             res.sendStatus(200);
                         } else {
                             console.error('Nothing given to respond...');
