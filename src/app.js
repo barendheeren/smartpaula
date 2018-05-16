@@ -490,7 +490,7 @@ function sendAlterDeskMessageFactory(groupChat){
 function processAlterDeskEvent(groupchat, event) {
     let message = event.body;
     console.log('event:', event);
-    getOrRegisterUser(groupchat, 'AD', event).then(sender => {
+    getOrRegisterUser(groupchat, 'AD', event.user).then(sender => {
         processMessage(message, sender, sendAlterDeskMessageFactory(groupchat));
     });
 }
@@ -785,7 +785,6 @@ function subscribeToWunderlist() {
 function syncAlterdeskChats() {
     alterdesk.get('groupchats', (success, result) => {
         for (let groupchat of result) {
-            let user = getOrRegisterUser(groupchat.id, 'AD');
             let webhookData = {
                 'event_name': 'groupchat_new_message',
                 'method': 'POST',
@@ -1223,8 +1222,10 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
             pool.query('SELECT * FROM alterdesk_messages_handled WHERE message_id = $1', [message_id])
                 .then((result) => {
                     if (result.rowCount === 0) {
-                        pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]);
                         alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
+                            if(success){
+                                pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]);
+                            }
                             if (result !== null) {
                                 processAlterDeskEvent(groupchat_id, result);
                             }
