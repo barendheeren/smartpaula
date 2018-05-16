@@ -489,6 +489,7 @@ function sendAlterDeskMessageFactory(groupChat){
 
 function processAlterDeskEvent(groupchat, event) {
     let message = event.body;
+    console.log('message:', message);
     getOrRegisterUser(groupchat, 'AD', event).then(sender => {
         processMessage(message, sender, sendAlterDeskMessageFactory(groupchat));
     });
