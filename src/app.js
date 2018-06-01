@@ -168,21 +168,7 @@ function handleResponse(response, sender, callback) {
 
             // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
             if (DEFAULT_INTENTS.includes(intent)) {
-                pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [sender]).then(result => {
-                    let handle = result.rows[0].handle;
-                    salesforce.sobject('Case')
-                        .create({
-                                AccountId: handle,
-                                Status: 'New',
-                                Origin: 'Smart Susan',
-                                Subject: resolvedQuery,
-                            },
-                            function (err, ret) {
-                                if (err || !ret.success) {
-                                    return console.error(err, ret);
-                                }
-                            });
-                });
+                createExpertConversation(sender, resolvedQuery);
             }
 
             switch (action) {
@@ -872,6 +858,25 @@ function getOrRegisterUser(handle, type, profile) {
     });
 }
 
+function createExpertConversation(client, message) {
+    return pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'SF\'', [client]).then(result => {
+        let handle = result.rows[0].handle;
+        salesforce.sobject('Case')
+            .create({
+                    AccountId: handle,
+                    Status: 'New',
+                    Origin: 'Smart Susan',
+                    Subject: message,
+                },
+                function (err, ret) {
+                    if (err || !ret.success) {
+                        return console.error(err, ret);
+                    }
+                    pool.query('INSERT INTO expert_conversation (client, created, case) VALUES ($1, (SELECT NOW()))', [client, ret.id]);
+                });
+    });
+}
+
 function logAction(user, intent, parameters) {
     if ('ignore' in parameters) {
         delete parameters.ignore;
@@ -919,13 +924,13 @@ function getVitaDockData(client, types) {
                         let date = new Date(item.measurementDate);
                         if (type === 0) {
                             salesforce.sobject('Blood_Pressure_Measurement__c').create({
-                                    Account__c: handle,
-                                    Diastole_Blood_Pressure__c: item.diastole,
-                                    Systole_Blood_Pressure__c: item.systole,
-                                    Heartbeat__c: item.pulse,
+                                Account__c: handle,
+                                Diastole_Blood_Pressure__c: item.diastole,
+                                Systole_Blood_Pressure__c: item.systole,
+                                Heartbeat__c: item.pulse,
 
-                                    Date_Time_Measurement__c: date.toISOString(),
-                                }, handleError);
+                                Date_Time_Measurement__c: date.toISOString(),
+                            }, handleError);
                         }
                         else if (type === 1) {
                             salesforce.sobject('Glucose_Measurement__c').create({
@@ -935,15 +940,15 @@ function getVitaDockData(client, types) {
                             }, handleError);
                         } else if (type === 4) {
                             salesforce.sobject('Weight_Measurements__c').create({
-                                    Account__c: handle,
-                                    Value__c: item.bodyWeight,
-                                    BMI__c: item.bmi,
-                                    Body_Fat_Percentage__c: item.bodyFat,
-                                    Body_Water_Percentage__c: item.bodyWater,
-                                    Bone_Mass_Percentage__c: item.boneMass,
-                                    Muscle_Mass_Percentage__c: item.muscleMass,
-                                    Date_Time_Measurement__c: date.toISOString(),
-                                }, handleError);
+                                Account__c: handle,
+                                Value__c: item.bodyWeight,
+                                BMI__c: item.bmi,
+                                Body_Fat_Percentage__c: item.bodyFat,
+                                Body_Water_Percentage__c: item.bodyWater,
+                                Bone_Mass_Percentage__c: item.boneMass,
+                                Muscle_Mass_Percentage__c: item.muscleMass,
+                                Date_Time_Measurement__c: date.toISOString(),
+                            }, handleError);
                         }
                     }
                 });
@@ -1307,6 +1312,7 @@ app.post('/webhook/scheduler', (req, res) => {
             });
         }
     });
+    pool.query('UPDATE expert_conversation SET active = FALSE WHERE active = TRUE AND created < NOW() - INTERVAL 10 MINUTE');
     syncAlterdeskChats();
     res.status(200).send();
 });
@@ -1412,7 +1418,7 @@ app.post('/webhook/salesforce', (req, res) => {
                                 } else if (intent.includes('SF12')) {
                                     type = 'SF12';
                                 }
-                                pool.query('INSERT INTO vragenlijsten (client, vragenlijst, salesforce_id) VALUES ($1, $2, $3)', [id, type, questionnaire])
+                                pool.query('INSERT INTO vragenlijsten (client, vragenlijst, salesforce_id) VALUES ($1, $2, $3)', [id, type, questionnaire]);
                             }
 
                             request.end();
@@ -1425,8 +1431,12 @@ app.post('/webhook/salesforce', (req, res) => {
                                 sendFunction = sendAlterDeskMessageFactory(handle);
                             }
                             if(sendFunction){
-                                sendFunction({text: 'Je vroeg "' + subject + '"'});
-                                setTimeout(sendFunction, 1000, {text: response});
+                                pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND active = TRUE', [id]).then(result => {
+                                    if(result.rowCount === 0) {
+                                        sendFunction({text: 'Je vroeg "' + subject + '"'});
+                                    }
+                                    setTimeout(sendFunction, 1000, {text: response});
+                                });
                             }
                             res.sendStatus(200);
                         } else {
