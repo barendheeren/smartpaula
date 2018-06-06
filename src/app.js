@@ -1337,7 +1337,7 @@ app.post('/webhook/scheduler', (req, res) => {
         }
     });
     syncAlterdeskChats();
-    pool.query('SELECT * FROM expert_conversation LEFT OUTER JOIN clients ON expert_conversation.client = clients.id WHERE active = false AND expert_conversation.created <= NOW() - INTERVAl \'10 minutes\' AND (clients.type = \'FB\' OR clients.type = \'AD\')').then(result => {
+    pool.query('SELECT expert_conversation.id AS conversation_id, * FROM expert_conversation LEFT OUTER JOIN clients ON expert_conversation.client = clients.id WHERE active = false AND expert_conversation.created <= NOW() - INTERVAl \'10 minutes\' AND (clients.type = \'FB\' OR clients.type = \'AD\')').then(result => {
         result.rows.forEach(row => {
             if (!sessionIds.has(row.client)) {
                 sessionIds.set(row.client, uuid.v1());
@@ -1350,7 +1350,7 @@ app.post('/webhook/scheduler', (req, res) => {
             });
 
             request.on('response', (response) => {
-                pool.query('UPDATE expert_conversation SET active = true WHERE id = $1', [row.id]);
+                pool.query('UPDATE expert_conversation SET active = true WHERE id = $1', [row.conversation_id]);
                 response.result.metadata.intentId = '';
                 if(row.type === 'FB'){
                     handleResponse(response, row.client, sendFacebookMessageFactory(row.handle));
