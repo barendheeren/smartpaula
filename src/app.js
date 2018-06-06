@@ -1333,7 +1333,7 @@ app.post('/webhook/scheduler', (req, res) => {
         }
     });
     syncAlterdeskChats();
-    pool.query('SELECT * FROM expert_conversation LEFT OUTER JOIN clients ON expert_conversation.client = clients.id WHERE active=true AND expert_conversation.created <= NOW() - INTERVAl \'10 minutes\' AND (clients.type = \'FB\' OR clients.type = \'AD\')').then(result => {
+    pool.query('SELECT * FROM expert_conversation LEFT OUTER JOIN clients ON expert_conversation.client = clients.id WHERE active=false AND expert_conversation.created <= NOW() - INTERVAl \'10 minutes\' AND (clients.type = \'FB\' OR clients.type = \'AD\')').then(result => {
         result.rows.forEach(row => {
             let request = apiAiService.eventRequest({
                 name: 'UNKNOWN_MESSAGE',
