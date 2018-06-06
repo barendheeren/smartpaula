@@ -172,6 +172,7 @@ function handleResponse(response, sender, callback) {
             // If the intent is one of a set of predefined "default" intents, someone needs to do a manual followup with this user.
             if (DEFAULT_INTENTS.includes(intent)) {
                 createExpertConversation(sender, resolvedQuery);
+                return;
             }
 
             switch (action) {
@@ -1332,6 +1333,25 @@ app.post('/webhook/scheduler', (req, res) => {
         }
     });
     syncAlterdeskChats();
+    pool.query('SELECT * FROM expert_conversation LEFT OUTER JOIN clients ON expert_conversation.client = clients.id WHERE active=true AND expert_conversation.created <= NOW() - INTERVAl \'10 minutes\' AND (clients.type = \'FB\' OR clients.type = \'AD\')').then(result => {
+        result.rows.forEach(row => {
+            let request = apiAiService.eventRequest({
+                name: 'UNKNOWN_MESSAGE',
+            }, {
+                sessionId: sessionIds.get(row.client)
+            });
+
+            request.on('response', (response) => {
+                response.result.metadata.intentId = '';
+                if(row.type === 'FB'){
+                    handleResponse(response, row.client, sendFacebookMessageFactory(row.handle));
+                } else if (row.type === 'AD') {
+                    handleResponse(response, row.client, sendAlterDeskMessageFactory(row.handle));
+                }
+            });
+            request.on('error', (error) => console.error(error));
+        });
+    });
     res.status(200).send();
 });
 
