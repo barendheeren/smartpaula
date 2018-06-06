@@ -76,6 +76,9 @@ let recipeState = {};
 /**
  * Handles an API.AI message, and responds accordingly to the Facebook user.
  * Handling includes e.g. database operations that should occur as a result of a previous message.
+ *
+ * @todo Create some way of updating questionnares and questions that works on all questionnares
+ *
  * @param {object} response A valid API.AI response
  * @param {number} sender A Facebook ID to respond to.
  * @param {function} callback function, called with the response message
@@ -173,7 +176,6 @@ function handleResponse(response, sender, callback) {
 
             switch (action) {
                 // User has answered a new PAM question
-                // TODO: Create some way of updating questionnares and questions that works on all questionnares
                 case "pam_sum":
                     let payload = response.result.payload;
                     let score = parameters.pam_score;
@@ -445,17 +447,32 @@ function processMessage(message, sender, callback) {
     if (!sessionIds.has(sender)) {
         sessionIds.set(sender, uuid.v1());
     }
-
-    //send message to api.ai
-    let apiaiRequest = apiAiService.textRequest(message, {
-        sessionId: sessionIds.get(sender)
+    pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND active = true AND (created < NOW() - INTERVAL 10 MINUTE OR updated < NOW() - INTERVAL 10 MINUTE)', [sender]).then(result => {
+        if (result.rowCount > 0) {
+            let row = result.rows[0];
+             salesforce.sobject('Chat__c')
+                .create({
+                    Chat_content__c: message,
+                }, function (err, ret) {
+                    if (err || !ret.success) {
+                        return console.error(err, ret);
+                    } else {
+                        pool.query("UPDATE expert_conversation SET updated = (SELECT NOW()) WHERE id=$1", [row.id])
+                    }
+                });
+        } else {
+            //send message to api.ai
+            let apiaiRequest = apiAiService.textRequest(message, {
+                sessionId: sessionIds.get(sender)
+            });
+            //receive message from api.ai
+            apiaiRequest.on('response', (response) => {
+                handleResponse(response, sender, callback);
+            });
+            apiaiRequest.on('error', (error) => console.error('Error: ' + error));
+            apiaiRequest.end();
+        }
     });
-    //receive message from api.ai
-    apiaiRequest.on('response', (response) => {
-        handleResponse(response, sender, callback);
-    });
-    apiaiRequest.on('error', (error) => console.error('Error: ' + error));
-    apiaiRequest.end();
 }
 
 function sendAlterDeskMessageFactory(groupChat){
@@ -1216,6 +1233,7 @@ app.post('/webhook/', (req, res) => {
 
 });
 
+// Alterdesk API webhook
 app.post('/webhook/alterdesk/:groupid', (req, res) => {
     try {
         let data = req.body;
@@ -1223,7 +1241,8 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
         let user_id = data.user_id;
         let groupchat_id = data.groupchat_id;
         let message_id = data.message_id;
-        if (user_id !== '2b479ab4-dc16-4db1-a094-7d5bd50d6c77') {
+
+        if (user_id !== '2b479ab4-dc16-4db1-a094-7d5bd50d6c77') { // Don't respond to our own messages
             pool.query('SELECT * FROM alterdesk_messages_handled WHERE message_id = $1', [message_id])
                 .then((result) => {
                     if (result.rowCount === 0) {
@@ -1312,7 +1331,6 @@ app.post('/webhook/scheduler', (req, res) => {
             });
         }
     });
-    pool.query('UPDATE expert_conversation SET active = FALSE WHERE active = TRUE AND created < NOW() - INTERVAL 10 MINUTE');
     syncAlterdeskChats();
     res.status(200).send();
 });
@@ -1431,9 +1449,11 @@ app.post('/webhook/salesforce', (req, res) => {
                                 sendFunction = sendAlterDeskMessageFactory(handle);
                             }
                             if(sendFunction){
-                                pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND active = TRUE', [id]).then(result => {
+                                pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND created < NOW() - INTERVAL 10 MINUTE OR updated < NOW() - INTERVAL 10 MINUTE', [id]).then(result => {
                                     if(result.rowCount === 0) {
                                         sendFunction({text: 'Je vroeg "' + subject + '"'});
+                                    } else {
+                                        pool.query('UPDATE expert_conversation SET active = TRUE, updated = (SELECT NOW()) WHERE id = $1', [result.rows[0].id]);
                                     }
                                     setTimeout(sendFunction, 1000, {text: response});
                                 });
