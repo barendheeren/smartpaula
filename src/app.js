@@ -1333,9 +1333,8 @@ app.post('/webhook/scheduler', (req, res) => {
         }
     });
     syncAlterdeskChats();
-    pool.query('SELECT * FROM expert_conversation LEFT OUTER JOIN clients ON expert_conversation.client = clients.id WHERE active=false AND expert_conversation.created <= NOW() - INTERVAl \'10 minutes\' AND (clients.type = \'FB\' OR clients.type = \'AD\')').then(result => {
+    pool.query('SELECT * FROM expert_conversation LEFT OUTER JOIN clients ON expert_conversation.client = clients.id WHERE active = false AND expert_conversation.created <= NOW() - INTERVAl \'10 minutes\' AND (clients.type = \'FB\' OR clients.type = \'AD\')').then(result => {
         result.rows.forEach(row => {
-            console.log(row);
             let request = apiAiService.eventRequest({
                 name: 'UNKNOWN_MESSAGE',
             }, {
@@ -1344,7 +1343,6 @@ app.post('/webhook/scheduler', (req, res) => {
 
             request.on('response', (response) => {
                 response.result.metadata.intentId = '';
-                console.log(response);
                 if(row.type === 'FB'){
                     handleResponse(response, row.client, sendFacebookMessageFactory(row.handle));
                 } else if (row.type === 'AD') {
@@ -1352,6 +1350,7 @@ app.post('/webhook/scheduler', (req, res) => {
                 }
             });
             request.on('error', (error) => console.error(error));
+            request.end();
         });
     });
     res.status(200).send();
