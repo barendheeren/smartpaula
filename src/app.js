@@ -422,7 +422,7 @@ function handleResponse(response, sender, callback) {
                         let request = apiAiService.eventRequest({
                             name: followUp
                         }, {
-                            sessionId: sessionIds.get(fbuser)
+                            sessionId: sessionIds.get(sender)
                         });
 
                         request.on('response', (response) => {
@@ -436,7 +436,7 @@ function handleResponse(response, sender, callback) {
                 if (isDefined(vragenlijst_end) && vragenlijst_end) {
                     pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender]).then(res => {
                         let vragenlijst = res.rows[0].id;
-                        pool.query('UPDATE vragenlijsten set gestopt = (SELECT NOW()) WHERE id = $1', [vragenlijst])
+                        pool.query('UPDATE vragenlijsten set gestopt = (SELECT NOW()) WHERE id = $1', [vragenlijst]);
                     });
                 }
             }
@@ -1051,14 +1051,14 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                             pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
                                 let handle = result.rows[0].handle;
 
-                                if (!sessionIds.has(handle)) {
-                                    sessionIds.set(handle, uuid.v1());
+                                if (!sessionIds.has(client)) {
+                                    sessionIds.set(client, uuid.v1());
                                 }
 
                                 let request = apiAiService.eventRequest({
                                     name: 'nokia_connected'
                                 }, {
-                                    sessionId: sessionIds.get(handle)
+                                    sessionId: sessionIds.get(client)
                                 });
 
                                 request.on('response', (response) => {
@@ -1155,15 +1155,16 @@ app.get('/connect/vitadock', (req, res) => {
                         pool.query('UPDATE connect_vitadock SET oauth_access_token = $1, oauth_access_secret = $2, last_update = \'epoch\' WHERE oauth_request_token = $3', [oAuthRequestToken, oAuthRequestTokenSecret, oAuthToken]).then(() => {
                             pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
                                 let handle = result.rows[0].handle;
+                                let id = result.rows[0].id;
 
-                                if (!sessionIds.has(handle)) {
-                                    sessionIds.set(handle, uuid.v1());
+                                if (!sessionIds.has(id)) {
+                                    sessionIds.set(id, uuid.v1());
                                 }
 
                                 let request = apiAiService.eventRequest({
                                     name: 'vitadock_connected'
                                 }, {
-                                    sessionId: sessionIds.get(handle)
+                                    sessionId: sessionIds.get(id)
                                 });
 
                                 request.on('response', (response) => {
@@ -1308,6 +1309,9 @@ app.post('/webhook/scheduler', (req, res) => {
                 pool.query('SELECT registration_date FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
                     .then(res => {
                         if (res.rowCount > 0) {
+                            if (!sessionIds.has(user)) {
+                                sessionIds.set(user, uuid.v1());
+                            }
                             let request = apiAiService.eventRequest({
                                 name: 'old_measurement_' + type
                             }, {
@@ -1335,6 +1339,10 @@ app.post('/webhook/scheduler', (req, res) => {
     syncAlterdeskChats();
     pool.query('SELECT * FROM expert_conversation LEFT OUTER JOIN clients ON expert_conversation.client = clients.id WHERE active = false AND expert_conversation.created <= NOW() - INTERVAl \'10 minutes\' AND (clients.type = \'FB\' OR clients.type = \'AD\')').then(result => {
         result.rows.forEach(row => {
+            if (!sessionIds.has(row.client)) {
+                sessionIds.set(row.client, uuid.v1());
+            }
+            
             let request = apiAiService.eventRequest({
                 name: 'UNKNOWN_MESSAGE',
             }, {
@@ -1431,14 +1439,14 @@ app.post('/webhook/salesforce', (req, res) => {
                         let handle = result.rows[0].handle;
                         let type = result.rows[0].type;
 
-                        if (!sessionIds.has(handle)) {
-                            sessionIds.set(handle, uuid.v1());
+                        if (!sessionIds.has(id)) {
+                            sessionIds.set(id, uuid.v1());
                         }
                         if (isDefined(intent)) {
                             let request = apiAiService.eventRequest({
                                 name: intent,
                             }, {
-                                sessionId: sessionIds.get(handle)
+                                sessionId: sessionIds.get(id)
                             });
 
                             request.on('response', (response) => {
