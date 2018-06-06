@@ -1339,37 +1339,38 @@ app.post('/webhook/scheduler', (req, res) => {
             send[user].forEach((type) => {
                 pool.query('SELECT * FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
                     .then(res => {
-                        if (res.rowCount > 0) {
-                            pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' OR type = 'AD' LIMIT 1", [user]).then(result => {
-                                let id = result.rows[0].id;
-                                let handle = result.rows[0].handle;
-                                let type = result.rows[0].type;
+                            if (res.rowCount > 0) {
+                                pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' OR type = 'AD' LIMIT 1", [user]).then(result => {
+                                    let id = result.rows[0].id;
+                                    let handle = result.rows[0].handle;
+                                    let type = result.rows[0].type;
 
-                                if (!sessionIds.has(user)) {
-                                    sessionIds.set(user, uuid.v1());
-                                }
-                                let request = apiAiService.eventRequest({
-                                    name: 'old_measurement_' + type
-                                }, {
-                                    sessionId: sessionIds.get(user)
-                                });
-                                request.on('response', (response) => {
-                                    if (type === 'FB') {
-                                        handleResponse(response, id, sendFacebookMessageFactory(handle));
-                                    } else if (type === 'AD') {
-                                        handleResponse(response, id, sendAlterDeskMessageFactory(handle));
+                                    if (!sessionIds.has(user)) {
+                                        sessionIds.set(user, uuid.v1());
                                     }
-                                });
-                                request.on('error', (error) => console.error(error));
-                                request.end();
+                                    let request = apiAiService.eventRequest({
+                                        name: 'old_measurement_' + type
+                                    }, {
+                                        sessionId: sessionIds.get(user)
+                                    });
+                                    request.on('response', (response) => {
+                                        if (type === 'FB') {
+                                            handleResponse(response, id, sendFacebookMessageFactory(handle));
+                                        } else if (type === 'AD') {
+                                            handleResponse(response, id, sendAlterDeskMessageFactory(handle));
+                                        }
+                                    });
+                                    request.on('error', (error) => console.error(error));
+                                    request.end();
 
-                                pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
-                                    let userRecord = result.rows[0];
-                                    let sentTypes = userRecord.sent_message.split(',');
-                                    if (!sentTypes.includes(type)) {
-                                        sentTypes.push(type);
-                                    }
-                                    pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
+                                    pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
+                                        let userRecord = result.rows[0];
+                                        let sentTypes = userRecord.sent_message.split(',');
+                                        if (!sentTypes.includes(type)) {
+                                            sentTypes.push(type);
+                                        }
+                                        pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
+                                    });
                                 });
                             }
                         }
