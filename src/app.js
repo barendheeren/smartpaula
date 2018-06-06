@@ -316,7 +316,7 @@ function handleResponse(response, sender, callback) {
                                 // Get a reqest token, and a login url to send to the user.
                                 nokia.getRequestUrl(sender, (error, url, oAuthToken, oAuthTokenSecret) => {
                                     if (!error) {
-                                        setTimeout(callback, 5000, { text: url });
+                                        setTimeout(callback, 5000, {text: url});
                                         pool.query('DELETE FROM connect_nokia WHERE client = $1', [sender]).then(() => {
                                             pool.query('INSERT INTO connect_nokia (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
                                                 .catch(e => console.error(e, e.stack));
@@ -332,7 +332,7 @@ function handleResponse(response, sender, callback) {
                             case "Vitadock":
                                 vitadock.getRequestUrl((error, url, oAuthToken, oAuthTokenSecret) => {
                                     if (!error) {
-                                        setTimeout(callback, 5000, { text: url });
+                                        setTimeout(callback, 5000, {text: url});
                                         pool.query('DELETE FROM connect_vitadock WHERE client = $1', [sender]).then(() => {
                                             pool.query('INSERT INTO connect_vitadock (client, oauth_request_token, oauth_request_secret) VALUES ($1, $2, $3)', [sender, oAuthToken, oAuthTokenSecret])
                                                 .catch(e => console.error(e, e.stack));
@@ -451,7 +451,7 @@ function processMessage(message, sender, callback) {
     pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND active = true AND (created > NOW() - INTERVAL \'10 minutes\' OR updated > NOW() - INTERVAL \'10 minutes\')', [sender]).then(result => {
         if (result.rowCount > 0) {
             let row = result.rows[0];
-             salesforce.sobject('Chat__c')
+            salesforce.sobject('Chat__c')
                 .create({
                     Chat_content__c: message,
                 }, function (err, ret) {
@@ -476,8 +476,8 @@ function processMessage(message, sender, callback) {
     });
 }
 
-function sendAlterDeskMessageFactory(groupChat){
-    return function(message) {
+function sendAlterDeskMessageFactory(groupChat) {
+    return function (message) {
         if (isDefined(message.text)) {
             let messageData = new Alterdesk.SendMessageData();
 
@@ -500,7 +500,7 @@ function processAlterDeskEvent(groupchat, event) {
 }
 
 function sendFacebookMessageFactory(fbuser) {
-    return function(message) {
+    return function (message) {
         if (isDefined(message.text)) {
             // facebook API limit for text length is 640,
             // so we must split message if needed
@@ -827,7 +827,7 @@ function isDefined(obj) {
 }
 
 function getProfile(handle, type, profile, callback) {
-    if(profile) {
+    if (profile) {
         callback(profile.first_name + ' ' + profile.last_name);
     } else {
         switch (type) {
@@ -1050,6 +1050,8 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                         pool.query('UPDATE connect_nokia SET oauth_access_token = $1, oauth_access_secret = $2, nokia_user = $3, last_update = \'epoch\' WHERE client = $4', [oAuthToken, oAuthTokenSecret, userid, client]).then(() => {
                             pool.query("SELECT handle FROM clients WHERE id = $1 AND type = 'FB'", [client]).then(result => {
                                 let handle = result.rows[0].handle;
+                                let id = result.rows[0].id;
+                                let type = result.rows[0].type;
 
                                 if (!sessionIds.has(client)) {
                                     sessionIds.set(client, uuid.v1());
@@ -1062,7 +1064,11 @@ app.get('/connect/nokia/:clientId', (req, res) => {
                                 });
 
                                 request.on('response', (response) => {
-                                    handleResponse(response, client);
+                                    if (type === 'FB') {
+                                        handleResponse(response, id, sendFacebookMessageFactory(handle));
+                                    } else if (type === 'AD') {
+                                        handleResponse(response, id, sendAlterDeskMessageFactory(handle));
+                                    }
                                 });
                                 request.on('error', (error) => console.error(error));
 
@@ -1100,23 +1106,34 @@ app.get('/connect/wunderlist/', (req, res) => {
             accessToken => {
                 pool.query('INSERT INTO connect_wunderlist (client, access_token) VALUES ($1, $2) ON CONFLICT (client) DO UPDATE SET access_token = excluded.access_token', [user, accessToken])
                     .then(() => {
-                        if (!sessionIds.has(user)) {
-                            sessionIds.set(user, uuid.v1());
-                        }
-                        let request = apiAiService.eventRequest({
-                            name: 'wunderlist_connected'
-                        }, {
-                            sessionId: sessionIds.get(user)
-                        });
+                        pool.query('SELECT * FROM clients WHERE id = $1 AND (type = \'FB\' OR type = \'AD\'')
+                            .then((result) => {
+                                let handle = result.rows[0].handle;
+                                let id = result.rows[0].id;
+                                let type = result.rows[0].type;
 
-                        request.on('response', (response) => {
-                            handleResponse(response, user);
-                        });
-                        request.on('error', (error) => console.error(error));
+                                if (!sessionIds.has(user)) {
+                                    sessionIds.set(user, uuid.v1());
+                                }
+                                let request = apiAiService.eventRequest({
+                                    name: 'wunderlist_connected'
+                                }, {
+                                    sessionId: sessionIds.get(user)
+                                });
 
-                        request.end();
+                                request.on('response', (response) => {
+                                    if (type === 'FB') {
+                                        handleResponse(response, id, sendFacebookMessageFactory(handle));
+                                    } else if (type === 'AD') {
+                                        handleResponse(response, id, sendAlterDeskMessageFactory(handle));
+                                    }
+                                });
+                                request.on('error', (error) => console.error(error));
 
-                        res.status(200).send();
+                                request.end();
+
+                                res.status(200).send();
+                            });
                     }, (err) => {
                         res.status(400).json(err);
                     });
@@ -1169,7 +1186,7 @@ app.get('/connect/vitadock', (req, res) => {
                                 });
 
                                 request.on('response', (response) => {
-                                    if(type === 'FB'){
+                                    if (type === 'FB') {
                                         handleResponse(response, id, sendFacebookMessageFactory(handle));
                                     } else if (type === 'AD') {
                                         handleResponse(response, id, sendAlterDeskMessageFactory(handle));
@@ -1254,8 +1271,10 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
                 .then((result) => {
                     if (result.rowCount === 0) {
                         alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
-                            if(success){
-                                pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]).catch((error) => {console.log('ERROR:' + error);});
+                            if (success) {
+                                pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]).catch((error) => {
+                                    console.log('ERROR:' + error);
+                                });
                             }
                             if (result !== null) {
                                 processAlterDeskEvent(groupchat_id, result);
@@ -1357,7 +1376,7 @@ app.post('/webhook/scheduler', (req, res) => {
             request.on('response', (response) => {
                 pool.query('UPDATE expert_conversation SET active = true WHERE id = $1', [row.conversation_id]);
                 response.result.metadata.intentId = '';
-                if(row.type === 'FB'){
+                if (row.type === 'FB') {
                     handleResponse(response, row.client, sendFacebookMessageFactory(row.handle));
                 } else if (row.type === 'AD') {
                     handleResponse(response, row.client, sendAlterDeskMessageFactory(row.handle));
@@ -1456,7 +1475,7 @@ app.post('/webhook/salesforce', (req, res) => {
                             });
 
                             request.on('response', (response) => {
-                                if(type === 'FB'){
+                                if (type === 'FB') {
                                     handleResponse(response, id, sendFacebookMessageFactory(handle));
                                 } else if (type === 'AD') {
                                     handleResponse(response, id, sendAlterDeskMessageFactory(handle));
@@ -1478,14 +1497,14 @@ app.post('/webhook/salesforce', (req, res) => {
                             res.status(200).send();
                         } else if (isDefined(response) && isDefined(subject)) {
                             let sendFunction;
-                            if(type === 'FB'){
+                            if (type === 'FB') {
                                 sendFunction = sendFacebookMessageFactory(handle);
                             } else if (type === 'AD') {
                                 sendFunction = sendAlterDeskMessageFactory(handle);
                             }
-                            if(sendFunction){
+                            if (sendFunction) {
                                 pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND (created > NOW() - INTERVAL \'10 minutes\' OR updated > NOW() - INTERVAL \'10 minutes\')', [id]).then(result => {
-                                    if(result.rowCount === 0) {
+                                    if (result.rowCount === 0) {
                                         sendFunction({text: 'Je vroeg "' + subject + '"'});
                                     } else {
                                         pool.query('UPDATE expert_conversation SET active = TRUE, updated = (SELECT NOW()) WHERE id = $1', [result.rows[0].id]);
