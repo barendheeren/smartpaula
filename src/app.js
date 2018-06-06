@@ -1106,7 +1106,7 @@ app.get('/connect/wunderlist/', (req, res) => {
             accessToken => {
                 pool.query('INSERT INTO connect_wunderlist (client, access_token) VALUES ($1, $2) ON CONFLICT (client) DO UPDATE SET access_token = excluded.access_token', [user, accessToken])
                     .then(() => {
-                        pool.query('SELECT * FROM clients WHERE id = $1 AND (type = \'FB\' OR type = \'AD\'')
+                        pool.query('SELECT * FROM clients WHERE id = $1 AND (type = \'FB\' OR type = \'AD\')', [user])
                             .then((result) => {
                                 let handle = result.rows[0].handle;
                                 let id = result.rows[0].id;
