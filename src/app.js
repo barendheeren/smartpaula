@@ -1344,6 +1344,7 @@ app.post('/webhook/scheduler', (req, res) => {
 
             request.on('response', (response) => {
                 response.result.metadata.intentId = '';
+                console.log(response);
                 if(row.type === 'FB'){
                     handleResponse(response, row.client, sendFacebookMessageFactory(row.handle));
                 } else if (row.type === 'AD') {
