@@ -447,7 +447,7 @@ function processMessage(message, sender, callback) {
     if (!sessionIds.has(sender)) {
         sessionIds.set(sender, uuid.v1());
     }
-    pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND active = true AND (created < NOW() - INTERVAL 10 MINUTE OR updated < NOW() - INTERVAL 10 MINUTE)', [sender]).then(result => {
+    pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND active = true AND (created < NOW() - INTERVAL \'10 minutes\' OR updated < NOW() - INTERVAL \'10 minutes\')', [sender]).then(result => {
         if (result.rowCount > 0) {
             let row = result.rows[0];
              salesforce.sobject('Chat__c')
@@ -1257,10 +1257,10 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
                     }
                 })
                 .catch(err => {
-                    return res.status(500).json({
+                    res.status(500).json({
                         status: "error",
                         error: err
-                    });
+                    }).send();
                 });
         }
         res.status(200).send();
@@ -1449,7 +1449,7 @@ app.post('/webhook/salesforce', (req, res) => {
                                 sendFunction = sendAlterDeskMessageFactory(handle);
                             }
                             if(sendFunction){
-                                pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND created < NOW() - INTERVAL 10 MINUTE OR updated < NOW() - INTERVAL 10 MINUTE', [id]).then(result => {
+                                pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND created < NOW() - INTERVAL \'10 minutes\' OR updated < NOW() - INTERVAL \'10 minutes\'', [id]).then(result => {
                                     if(result.rowCount === 0) {
                                         sendFunction({text: 'Je vroeg "' + subject + '"'});
                                     } else {
