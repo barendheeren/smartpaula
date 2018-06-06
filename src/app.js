@@ -296,7 +296,7 @@ function handleResponse(response, sender, callback) {
                                         sessionId: sessionIds.get(sender)
                                     });
                                     request.on('response', (response) => {
-                                        handleResponse(response, sender);
+                                        handleResponse(response, sender, callback);
                                     });
                                     request.on('error', (error) => console.error(error));
 
@@ -416,9 +416,7 @@ function handleResponse(response, sender, callback) {
                 let vragenlijst_end = payload.vragenlijst_end;
 
                 if (isDefined(followUp)) {
-                    pool.query('SELECT handle FROM clients WHERE id = $1 AND type = \'FB\'', [sender]).then(result => {
-                        let fbuser = result.rows[0].handle;
-
+                    pool.query('SELECT handle FROM clients WHERE id = $1 AND (type = \'FB\' OR type = \'AD\')', [sender]).then(result => {
                         let request = apiAiService.eventRequest({
                             name: followUp
                         }, {
@@ -426,7 +424,7 @@ function handleResponse(response, sender, callback) {
                         });
 
                         request.on('response', (response) => {
-                            handleResponse(response, sender);
+                            handleResponse(response, sender, callback);
                         });
                         request.on('error', (error) => console.error(error));
                         request.end();
@@ -573,11 +571,11 @@ function chunkString(s, len) {
 }
 
 /**
- * Send facebook message to user, based on what new measurements have been received.
+ * Send message to user, based on what new measurements have been received.
  * @param {Array<number>} types measurement types, according to the Nokia Health API
  * @param {number} user Facebook User Id
  */
-function sendMeasurementMessage(types, user) {
+function sendMeasurementMessage(types, user, callback) {
     let event = 'new_measurement_';
 
     if (types.length === 3 && types.includes(9) && types.includes(10) && types.includes(11)) {
@@ -599,7 +597,7 @@ function sendMeasurementMessage(types, user) {
     });
 
     request.on('response', (response) => {
-        handleResponse(response, user);
+        handleResponse(response, user, callback);
     });
     request.on('error', (error) => console.error(error));
 
@@ -726,7 +724,16 @@ function getNokiaMeasurements(userid) {
                 });
             });
             if (measureTypes.length > 0) {
-                sendMeasurementMessage(measureTypes, user.client);
+                pool.query('SELECT * FROM clients WHERE id = $1 AND (type = \'FB\' OR type = \'AD\')', [user.client]).then((result) => {
+                    let handle = result.rows[0].handle;
+                    let id = result.rows[0].id;
+                    let type = result.rows[0].type;
+                    if (type === 'FB') {
+                        sendMeasurementMessage(measureTypes, id, sendFacebookMessageFactory(handle));
+                    } else if (type === 'AD') {
+                        sendMeasurementMessage(measureTypes, id, sendAlterDeskMessageFactory(handle));
+                    }
+                });
                 measureTypes.forEach(type => {
                     let namedType = '';
                     if (type === 9 || type === 10 || type === 11) {
@@ -1330,33 +1337,43 @@ app.post('/webhook/scheduler', (req, res) => {
             }
 
             send[user].forEach((type) => {
-                pool.query('SELECT registration_date FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
+                pool.query('SELECT * FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
                     .then(res => {
                         if (res.rowCount > 0) {
-                            if (!sessionIds.has(user)) {
-                                sessionIds.set(user, uuid.v1());
-                            }
-                            let request = apiAiService.eventRequest({
-                                name: 'old_measurement_' + type
-                            }, {
-                                sessionId: sessionIds.get(user)
-                            });
-                            request.on('response', (response) => {
-                                handleResponse(response, user);
-                            });
-                            request.on('error', (error) => console.error(error));
-                            request.end();
+                            pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' OR type = 'AD' LIMIT 1", [user]).then(result => {
+                                let id = result.rows[0].id;
+                                let handle = result.rows[0].handle;
+                                let type = result.rows[0].type;
 
-                            pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
-                                let userRecord = result.rows[0];
-                                let sentTypes = userRecord.sent_message.split(',');
-                                if (!sentTypes.includes(type)) {
-                                    sentTypes.push(type);
+                                if (!sessionIds.has(user)) {
+                                    sessionIds.set(user, uuid.v1());
                                 }
-                                pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
-                            });
+                                let request = apiAiService.eventRequest({
+                                    name: 'old_measurement_' + type
+                                }, {
+                                    sessionId: sessionIds.get(user)
+                                });
+                                request.on('response', (response) => {
+                                    if (type === 'FB') {
+                                        handleResponse(response, id, sendFacebookMessageFactory(handle));
+                                    } else if (type === 'AD') {
+                                        handleResponse(response, id, sendAlterDeskMessageFactory(handle));
+                                    }
+                                });
+                                request.on('error', (error) => console.error(error));
+                                request.end();
+
+                                pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
+                                    let userRecord = result.rows[0];
+                                    let sentTypes = userRecord.sent_message.split(',');
+                                    if (!sentTypes.includes(type)) {
+                                        sentTypes.push(type);
+                                    }
+                                    pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
+                                });
+                            }
                         }
-                    });
+                    );
             });
         }
     });
