@@ -889,7 +889,7 @@ function createExpertConversation(client, message) {
                     if (err || !ret.success) {
                         return console.error(err, ret);
                     }
-                    pool.query('INSERT INTO expert_conversation (client, created, case) VALUES ($1, (SELECT NOW()))', [client, ret.id]);
+                    pool.query('INSERT INTO expert_conversation (client, created, case) VALUES ($1, (SELECT NOW()), $2)', [client, ret.id]);
                 });
     });
 }
