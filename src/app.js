@@ -1248,7 +1248,7 @@ app.post('/webhook/alterdesk/:groupid', (req, res) => {
                     if (result.rowCount === 0) {
                         alterdesk.get('/groupchats/' + groupchat_id + '/messages/' + message_id, function (success, result) {
                             if(success){
-                                pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]);
+                                pool.query('INSERT INTO alterdesk_messages_handled (message_id) VALUES ($1)', [message_id]).catch((error) => {console.log('ERROR:' + error);});
                             }
                             if (result !== null) {
                                 processAlterDeskEvent(groupchat_id, result);
