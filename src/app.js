@@ -1268,7 +1268,6 @@ app.post('/webhook/', (req, res) => {
 app.post('/webhook/alterdesk/:groupid', (req, res) => {
     try {
         let data = req.body;
-        console.log(data);
         let user_id = data.user_id;
         let groupchat_id = data.groupchat_id;
         let message_id = data.message_id;
@@ -1340,7 +1339,7 @@ app.post('/webhook/scheduler', (req, res) => {
                 pool.query('SELECT * FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
                     .then(res => {
                         if (res.rowCount > 0) {
-                            pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' OR type = 'AD' LIMIT 1", [user]).then(result => {
+                            pool.query("SELECT * FROM clients WHERE id = $1 AND (type = 'FB' OR type = 'AD') LIMIT 1", [user]).then(result => {
                                 let id = result.rows[0].id;
                                 let handle = result.rows[0].handle;
                                 let type = result.rows[0].type;
@@ -1473,11 +1472,10 @@ app.post('/webhook/salesforce', (req, res) => {
     let questionnaire = body.Questionnaire;
 
     if (isDefined(user)) {
-        console.log(user);
-        pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'SF' LIMIT 1", [user])
+        pool.query("SELECT * FROM clients WHERE (id = $1 OR handle = $1) AND type = 'SF' LIMIT 1", [user])
             .then(result => {
                 if (result.rowCount) {
-                    pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' OR type = 'AD' LIMIT 1", [result.rows[0].id]).then(result => {
+                    pool.query("SELECT * FROM clients WHERE id = $1 AND (type = 'FB' OR type = 'AD') LIMIT 1", [result.rows[0].id]).then(result => {
                         let id = result.rows[0].id;
                         let handle = result.rows[0].handle;
                         let type = result.rows[0].type;
