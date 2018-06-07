@@ -77,7 +77,7 @@ let recipeState = {};
  * Handles an API.AI message, and responds accordingly to the Facebook user.
  * Handling includes e.g. database operations that should occur as a result of a previous message.
  *
- * @todo Create some way of updating questionnares and questions that works on all questionnares
+ * @todo Create some way of updating questionnaires and questions that works on all questionnaires
  *
  * @param {object} response A valid API.AI response
  * @param {number} sender A Facebook ID to respond to.
@@ -1339,42 +1339,41 @@ app.post('/webhook/scheduler', (req, res) => {
             send[user].forEach((type) => {
                 pool.query('SELECT * FROM clients WHERE registration_date < (CURRENT_DATE - INTERVAL \'1 week\') LIMIT 1')
                     .then(res => {
-                            if (res.rowCount > 0) {
-                                pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' OR type = 'AD' LIMIT 1", [user]).then(result => {
-                                    let id = result.rows[0].id;
-                                    let handle = result.rows[0].handle;
-                                    let type = result.rows[0].type;
+                        if (res.rowCount > 0) {
+                            pool.query("SELECT * FROM clients WHERE id = $1 AND type = 'FB' OR type = 'AD' LIMIT 1", [user]).then(result => {
+                                let id = result.rows[0].id;
+                                let handle = result.rows[0].handle;
+                                let type = result.rows[0].type;
 
-                                    if (!sessionIds.has(user)) {
-                                        sessionIds.set(user, uuid.v1());
-                                    }
-                                    let request = apiAiService.eventRequest({
-                                        name: 'old_measurement_' + type
-                                    }, {
-                                        sessionId: sessionIds.get(user)
-                                    });
-                                    request.on('response', (response) => {
-                                        if (type === 'FB') {
-                                            handleResponse(response, id, sendFacebookMessageFactory(handle));
-                                        } else if (type === 'AD') {
-                                            handleResponse(response, id, sendAlterDeskMessageFactory(handle));
-                                        }
-                                    });
-                                    request.on('error', (error) => console.error(error));
-                                    request.end();
-
-                                    pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
-                                        let userRecord = result.rows[0];
-                                        let sentTypes = userRecord.sent_message.split(',');
-                                        if (!sentTypes.includes(type)) {
-                                            sentTypes.push(type);
-                                        }
-                                        pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
-                                    });
+                                if (!sessionIds.has(user)) {
+                                    sessionIds.set(user, uuid.v1());
+                                }
+                                let request = apiAiService.eventRequest({
+                                    name: 'old_measurement_' + type
+                                }, {
+                                    sessionId: sessionIds.get(user)
                                 });
-                            }
+                                request.on('response', (response) => {
+                                    if (type === 'FB') {
+                                        handleResponse(response, id, sendFacebookMessageFactory(handle));
+                                    } else if (type === 'AD') {
+                                        handleResponse(response, id, sendAlterDeskMessageFactory(handle));
+                                    }
+                                });
+                                request.on('error', (error) => console.error(error));
+                                request.end();
+
+                                pool.query('SELECT sent_message FROM connect_nokia WHERE client = $1', [user]).then(result => {
+                                    let userRecord = result.rows[0];
+                                    let sentTypes = userRecord.sent_message.split(',');
+                                    if (!sentTypes.includes(type)) {
+                                        sentTypes.push(type);
+                                    }
+                                    pool.query('UPDATE connect_nokia SET sent_message = $1 WHERE client = $2', [sentTypes.join(), user]);
+                                });
+                            });
                         }
-                    );
+                    });
             });
         }
     });
@@ -1474,6 +1473,7 @@ app.post('/webhook/salesforce', (req, res) => {
     let questionnaire = body.Questionnaire;
 
     if (isDefined(user)) {
+        console.log(user);
         pool.query("SELECT * FROM clients WHERE id = $1 OR handle = $1 AND type = 'SF' LIMIT 1", [user])
             .then(result => {
                 if (result.rowCount) {
