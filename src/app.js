@@ -452,6 +452,7 @@ function processMessage(message, sender, callback) {
             salesforce.sobject('Chat__c')
                 .create({
                     Chat_content__c: message,
+                	Parent_Case__c: row.case_id,
                 }, function (err, ret) {
                     if (err || !ret.success) {
                         return console.error(err, ret);
