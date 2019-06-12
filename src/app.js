@@ -155,7 +155,8 @@ function handleResponse(response, sender) {
 
                     if (typeof score !== 'undefined') {
                         score = score || 0;
-                        pool.query('SELECT id FROM vragenlijsten WHERE fbuser = $1 ORDER BY gestart DESC LIMIT 1', [sender])
+                        //pool.query('SELECT id FROM vragenlijsten WHERE fbuser = $1 ORDER BY gestart DESC LIMIT 1', [sender])
+                        pool.query('SELECT id FROM vragenlijsten WHERE client = $1 ORDER BY gestart DESC LIMIT 1', [sender])
                             .then(res => {
                                 let vragenlijst = res.rows[0].id;
                                 pool.query('SELECT * FROM antwoorden WHERE vragenlijst = $1', [vragenlijst])
@@ -177,16 +178,19 @@ function handleResponse(response, sender) {
 
                     // User wants to start a new questionnare
                 case "start_vragenlijst":
-                    pool.query({ text: 'INSERT INTO vragenlijsten (fbuser, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
+                    //pool.query({ text: 'INSERT INTO vragenlijsten (fbuser, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
+                    pool.query({ text: 'INSERT INTO vragenlijsten (client, vragenlijst) VALUES($1, $2)', values: [sender, parameters.vragenlijst] })
                         .catch(e => console.error(e, e.stack));
                     break;
 
                     // User wants to create a new wunderlist-list
                 case "create_wunderlist":
-                    pool.query("SELECT * FROM connect_wunderlist WHERE fbuser = $1", [sender]).then(result => {
+                    //pool.query("SELECT * FROM connect_wunderlist WHERE fbuser = $1", [sender]).then(result => {
+                    pool.query("SELECT * FROM connect_wunderlist WHERE client = $1", [sender]).then(result => {    
                         let connection = result.rows[0];
                         wunderlist.createList(connection.access_token).done(list => {
-                            pool.query("INSERT INTO wunderlist_lists (fbuser, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
+                            //pool.query("INSERT INTO wunderlist_lists (fbuser, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
+                            pool.query("INSERT INTO wunderlist_lists (client, id, created_at) VALUES ($1, $2, $3)", [sender, list.id, list.created_at])
                                 .then(() => {
                                     let request = apiAiService.eventRequest({
                                         name: 'new_list',
