@@ -78,7 +78,8 @@ function getUser(rows, callback, onComplete) {
 }
 
 function getAllUsers(callback) {
-    pool.query("SELECT fbuser FROM vragenlijsten GROUP BY fbuser UNION SELECT fbuser FROM connect_nokia UNION SELECT fbuser FROM connect_wunderlist")
+    //pool.query("SELECT fbuser FROM vragenlijsten GROUP BY fbuser UNION SELECT fbuser FROM connect_nokia UNION SELECT fbuser FROM connect_wunderlist")
+    pool.query("SELECT client FROM vragenlijsten GROUP BY client UNION SELECT client FROM connect_nokia UNION SELECT client FROM connect_wunderlist")
         .then(result => {
             let users = [];
             getUser(result.rows,
@@ -334,14 +335,16 @@ app.get('/:user', isLoggedIn, (req, res) => {
 app.get('/:user/data', (req, res) => {
     let user = req.params.user;
     let userData = {};
-    pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', vragenlijsten.gestart))),\'YYYY-MM-DDThh24:MI:SSZ\') as date, (SELECT SUM(waarde) FROM antwoorden WHERE antwoorden.vragenlijst = vragenlijsten.id) FROM vragenlijsten WHERE fbuser = $1', [user]).then(result => {
+    //pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', vragenlijsten.gestart))),\'YYYY-MM-DDThh24:MI:SSZ\') as date, (SELECT SUM(waarde) FROM antwoorden WHERE antwoorden.vragenlijst = vragenlijsten.id) FROM vragenlijsten WHERE fbuser = $1', [user]).then(result => {
+    pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', vragenlijsten.gestart))),\'YYYY-MM-DDThh24:MI:SSZ\') as date, (SELECT SUM(waarde) FROM antwoorden WHERE antwoorden.vragenlijst = vragenlijsten.id) FROM vragenlijsten WHERE client = $1', [user]).then(result => {
         userData.lists = { data: [] };
         result.rows.forEach((row) => {
             if (row.date && row.sum) {
                 userData.lists.data.push({ x: row.date, y: row.sum })
             }
         });
-        pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', antwoorden.antwoord_op))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM antwoorden LEFT JOIN vragenlijsten ON antwoorden.vragenlijst = vragenlijsten.id WHERE vragenlijsten.fbuser = $1 ORDER BY antwoorden.antwoord_op ASC', [user]).then(result => {
+        //pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', antwoorden.antwoord_op))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM antwoorden LEFT JOIN vragenlijsten ON antwoorden.vragenlijst = vragenlijsten.id WHERE vragenlijsten.fbuser = $1 ORDER BY antwoorden.antwoord_op ASC', [user]).then(result => {
+        pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', antwoorden.antwoord_op))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM antwoorden LEFT JOIN vragenlijsten ON antwoorden.vragenlijst = vragenlijsten.id WHERE vragenlijsten.client = $1 ORDER BY antwoorden.antwoord_op ASC', [user]).then(result => {    
             userData.questions = { data: [] };
             result.rows.forEach((row) => {
                 if (!(row.vraag in userData.questions.data)) {
@@ -357,7 +360,8 @@ app.get('/:user/data', (req, res) => {
 
             userData.questions.data = Object.keys(userData.questions.data).map(function (key) { return userData.questions.data[key] })
 
-            pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', measure_blood.measure_date))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM measure_blood WHERE fbuser = $1 ORDER BY measure_date ASC', [user]).then((result) => {
+            //pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', measure_blood.measure_date))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM measure_blood WHERE fbuser = $1 ORDER BY measure_date ASC', [user]).then((result) => {
+            pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', measure_blood.measure_date))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM measure_blood WHERE client = $1 ORDER BY measure_date ASC', [user]).then((result) => {    
                 userData.blood = {};
                 userData.blood.systolic = [];
                 userData.blood.diastolic = [];
@@ -373,7 +377,8 @@ app.get('/:user/data', (req, res) => {
                         userData.blood.pulse.push({ x: row.date, y: row.pulse });
                     }
                 });
-                pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', measure_weight.measure_date))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM measure_weight WHERE fbuser = $1 ORDER BY measure_date ASC', [user]).then(result => {
+                //pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', measure_weight.measure_date))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM measure_weight WHERE fbuser = $1 ORDER BY measure_date ASC', [user]).then(result => {
+                pool.query('SELECT *, to_char(timezone(\'zulu\', to_timestamp(date_part(\'epoch\', measure_weight.measure_date))),\'YYYY-MM-DDThh24:MI:SSZ\') as date FROM measure_weight WHERE client = $1 ORDER BY measure_date ASC', [user]).then(result => {    
                     userData.weight = { data: [] };
                     result.rows.forEach(row => {
                         if (row.weight) {
