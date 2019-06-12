@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "API.AI Facebook Bot",
   "main": "src/app.js",
+  "engines": {
+    "node": "8.11.2"
+  },
   "scripts": {
     "start": "node src/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
