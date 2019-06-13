@@ -449,10 +449,10 @@ function processMessage(message, sender, callback) {
     pool.query('SELECT * FROM expert_conversation WHERE client = $1 AND active = true AND (created > NOW() - INTERVAL \'10 minutes\' OR updated > NOW() - INTERVAL \'10 minutes\')', [sender]).then(result => {
         if (result.rowCount > 0) {
             let row = result.rows[0];
-            salesforce.sobject('Chat__c')
-                .create({
-                    Chat_content__c: message,
-                	Parent_Case__c: row.case_id,
+            //salesforce.sobject('Chat__c')
+            //    .create({
+            //        Chat_content__c: message,
+            //    	Parent_Case__c: row.case_id,
                 }, function (err, ret) {
                     if (err || !ret.success) {
                         return console.error(err, ret);
@@ -858,10 +858,10 @@ function createNewClient(handle, type, profile) {
     return pool.query("INSERT INTO clients (id, handle, type, registration_date) VALUES ($1, $2, $3, (SELECT NOW()))", [id, handle, type])
         .then(res => {
             getProfile(handle, type, profile, (name) => {
-                salesforce.sobject('Account').create({
-                    name: name,
-                    RecordTypeId: '0120Y0000015YRyQAM',
-                    GUID__c: id
+                //salesforce.sobject('Account').create({
+                //    name: name,
+                //    RecordTypeId: '0120Y0000015YRyQAM',
+                //    GUID__c: id
                 }, function (err, ret) {
                     if (err || !ret.success) {
                         return console.error(err, ret);
@@ -873,6 +873,7 @@ function createNewClient(handle, type, profile) {
         });
 }
 
+//check of de gebruiker bekend is
 function getOrRegisterUser(handle, type, profile) {
     type = type || 'FB';
     return pool.query("SELECT * FROM clients WHERE handle = $1 or id = $1", [handle]).then(res => {
@@ -1563,17 +1564,3 @@ app.listen(REST_PORT, () => {
     console.log('Rest service ready on port ' + REST_PORT);
 });
 
-
-//salesforce.login(SALESFORCE_USER, SALESFORCE_PASSWORD, (err, userInfo) => {
-//    if (err) {
-//        return console.error(err);
-//    }
-//    // Subscribe to the facebook API
-//    facebook.doSubscribeRequest();
-//    // Subscribe to all Nokia Users
-//    subscribeToNokia();
-//    // Subscribe to all Wunderlist lists
-//    subscribeToWunderlist();
-//    // Sync Alterdesk chats
-//    syncAlterdeskChats();
-//});
