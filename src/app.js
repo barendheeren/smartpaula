@@ -32,8 +32,8 @@ const WUNDERLIST_CLIENT_ID = process.env.WUNDERLIST_CLIENT_ID;
 const WUNDERLIST_CLIENT_SECRET = process.env.WUNDERLIST_CLIENT_SECRET;
 const VITADOCK_API_TOKEN = process.env.VITADOCK_API_TOKEN;
 const VITADOCK_API_SECRET = process.env.VITADOCK_API_SECRET;
-const SALESFORCE_USER = process.env.SALESFORCE_USER;
-const SALESFORCE_PASSWORD = process.env.SALESFORCE_PASSWORD;
+//const SALESFORCE_USER = process.env.SALESFORCE_USER;
+//const SALESFORCE_PASSWORD = process.env.SALESFORCE_PASSWORD;
 const ALTERDESK_API_TOKEN = process.env.ALTERDESK_API_TOKEN;
 const HOSTNAME = process.env.HOSTNAME;
 const DEFAULT_INTENT_REFER_TO = process.env.DEFAULT_INTENT_REFER_TO;
@@ -1154,6 +1154,7 @@ app.get('/connect/wunderlist/', (req, res) => {
     }
 });
 
+// Vitadock API webhook
 app.get('/connect/vitadock', (req, res) => {
     try {
         let oAuthToken = req.query.oauth_token;
@@ -1463,6 +1464,7 @@ app.all('/webhook/wunderlist/:client', (req, res) => {
     }
 });
 
+//inlog voor gebruiker via salesforce voor verwerken vragenlijst?
 app.post('/webhook/salesforce', (req, res) => {
     let body = JSON.parse(req.body);
 
@@ -1562,16 +1564,16 @@ app.listen(REST_PORT, () => {
 });
 
 
-salesforce.login(SALESFORCE_USER, SALESFORCE_PASSWORD, (err, userInfo) => {
-    if (err) {
-        return console.error(err);
-    }
-    // Subscribe to the facebook API
-    facebook.doSubscribeRequest();
-    // Subscribe to all Nokia Users
-    subscribeToNokia();
-    // Subscribe to all Wunderlist lists
-    subscribeToWunderlist();
-    // Sync Alterdesk chats
-    syncAlterdeskChats();
-});
+//salesforce.login(SALESFORCE_USER, SALESFORCE_PASSWORD, (err, userInfo) => {
+//    if (err) {
+//        return console.error(err);
+//    }
+//    // Subscribe to the facebook API
+//    facebook.doSubscribeRequest();
+//    // Subscribe to all Nokia Users
+//    subscribeToNokia();
+//    // Subscribe to all Wunderlist lists
+//    subscribeToWunderlist();
+//    // Sync Alterdesk chats
+//    syncAlterdeskChats();
+//});
